@@ -120,8 +120,8 @@ try {
 	<Footer />
 
     <!-- MODAL DE PRODUCTO -->
-    <div id="productModalOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-md z-[300] hidden flex items-center justify-center p-4 lg:p-10 transition-opacity duration-300 opacity-0">
-        <div id="productModal" class="bg-white w-full max-w-6xl max-h-[95vh] lg:max-h-[90vh] rounded-[2.5rem] overflow-hidden shadow-2xl relative translate-y-10 transition-transform duration-300 opacity-0">
+    <div id="productModalOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-md z-[300] hidden flex items-start lg:items-center justify-center p-4 lg:p-10 transition-opacity duration-300 opacity-0 overflow-y-auto">
+        <div id="productModal" class="bg-white w-full max-w-6xl max-h-[95vh] lg:max-h-[90vh] rounded-[2.5rem] overflow-hidden shadow-2xl relative translate-y-10 transition-transform duration-300 opacity-0 mt-10 mb-10 lg:mt-0 lg:mb-0">
             <button id="btnCloseModal" class="absolute top-6 right-6 lg:top-10 lg:right-10 z-10 w-12 h-12 bg-white/80 backdrop-blur hover:bg-white rounded-full flex items-center justify-center shadow-lg transition-all">
                 <i class="bi bi-x-lg text-lg"></i>
             </button>
@@ -246,11 +246,16 @@ try {
     const toggleModal = (show) => {
         if (show) {
             modalOverlay.classList.remove('hidden');
-            setTimeout(() => { modalOverlay.classList.add('opacity-100'); modal.classList.add('translate-y-0', 'opacity-100'); }, 10);
-            document.body.style.overflow = 'hidden';
+            setTimeout(() => {
+                modalOverlay.classList.add('opacity-100');
+                modal.classList.add('translate-y-0', 'opacity-100');
+            }, 10);
         } else {
-            modalOverlay.classList.remove('opacity-100'); modal.classList.remove('translate-y-0', 'opacity-100');
-            setTimeout(() => { modalOverlay.classList.add('hidden'); document.body.style.overflow = ''; }, 300);
+            modalOverlay.classList.remove('opacity-100');
+            modal.classList.remove('translate-y-0', 'opacity-100');
+            setTimeout(() => {
+                modalOverlay.classList.add('hidden');
+            }, 300);
         }
     };
 
