@@ -1,0 +1,159 @@
+---
+interface Props {
+	tiendaNombre: string;
+	categorias: any[];
+}
+
+const { tiendaNombre, categorias } = Astro.props;
+---
+
+<header class="site-header sticky top-0 z-[100] bg-white">
+	<div class="header-gradient w-full"></div>
+	<nav class="bg-white border-b border-gray-100">
+		<div class="container-fluid px-4 lg:px-12">
+			<div class="flex items-center justify-between min-h-[60px] lg:min-h-[80px]">
+				
+				<div class="flex-1 flex items-center">
+					<button id="btnOpenMobileMenu" class="lg:hidden p-2 -ml-2 text-2xl text-gray-900">
+						<i class="bi bi-list"></i>
+					</button>
+
+                    <div class="hidden lg:flex items-center space-x-2">
+                        <a href="/" class="nav-link-premium">Inicio</a>
+                        <div class="relative group">
+                            <button class="nav-link-premium flex items-center gap-1.5">
+                                Categorías <i class="bi bi-chevron-down text-[9px] transition-transform group-hover:rotate-180"></i>
+                            </button>
+                            <div class="absolute left-0 top-full hidden group-hover:block pt-2 w-56">
+                                <div class="bg-white shadow-[0_15px_50px_rgba(0,0,0,0.12)] rounded-2xl py-3 border border-gray-100 overflow-hidden">
+                                    {categorias.map((cat) => (
+                                        <a href={`/categoria/${cat.Slug}`} class="block px-6 py-2.5 text-[11px] font-bold text-gray-500 hover:text-primario hover:bg-gray-50 transition-all uppercase tracking-widest">
+                                            {cat.Nombre}
+                                        </a>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+				</div>
+
+				<div class="flex-shrink-0 text-center px-4">
+					<a href="/" class="brand-logo">{tiendaNombre}</a>
+				</div>
+
+				<div class="flex-1 flex items-center justify-end gap-3 lg:gap-6">
+					<div class="relative hidden lg:block group">
+						<input
+							type="text"
+                            id="desktop-search"
+							placeholder="Buscar..."
+							class="bg-gray-50 border border-transparent rounded-full py-2 pl-10 pr-10 text-[11px] font-bold w-40 lg:w-56 focus:w-64 focus:bg-white focus:border-gray-200 focus:ring-4 focus:ring-gray-50 outline-none transition-all uppercase tracking-widest"
+						/>
+						<i class="bi bi-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-[10px] pointer-events-none"></i>
+						<button id="btn-desktop-search" type="button" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-900 transition-colors p-1">
+							<i class="bi bi-arrow-right-short text-base"></i>
+						</button>
+					</div>
+
+					<button class="relative p-2 group" id="btnOpenCart">
+						<i class="bi bi-bag text-xl lg:text-2xl text-gray-900 group-hover:text-primario transition-colors"></i>
+						<span class="cart-badge-count hidden absolute top-0 right-0 bg-primario text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center border-2 border-white">0</span>
+					</button>
+				</div>
+			</div>
+		</div>
+	</nav>
+</header>
+
+<!-- Menú Lateral -->
+<div id="mobileMenuOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] opacity-0 pointer-events-none transition-opacity duration-300"></div>
+<div id="mobileMenu" class="fixed top-0 left-0 h-full w-[320px] bg-white z-[201] -translate-x-full transition-transform duration-300 ease-in-out shadow-2xl">
+    <div class="flex items-center justify-between px-8 py-8 border-b border-gray-50">
+        <h5 class="font-black text-sm uppercase tracking-[4px]">{tiendaNombre}</h5>
+        <button id="btnCloseMobileMenu" class="p-2 text-gray-400 hover:text-gray-900"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="p-6 lg:hidden flex gap-3">
+        <input type="text" id="mobile-search" placeholder="Buscar productos..." class="flex-grow bg-gray-50 border-0 rounded-2xl py-4 px-6 text-xs font-bold uppercase tracking-widest focus:ring-2 focus:ring-primario/20 outline-none" />
+        <button id="btn-mobile-search" type="button" class="bg-gray-900 hover:bg-black text-white rounded-2xl px-4 flex items-center justify-center transition-colors shrink-0">
+            <i class="bi bi-search text-sm"></i>
+        </button>
+    </div>
+    <div class="flex flex-col overflow-y-auto">
+        <a href="/" class="mobile-nav-link">Inicio</a>
+        <div class="px-8 py-5 text-[9px] font-black uppercase tracking-[3px] text-gray-300 bg-gray-50/50">Colecciones</div>
+        {categorias.map((cat) => (
+            <a href={`/categoria/${cat.Slug}`} class="mobile-nav-link">{cat.Nombre}</a>
+        ))}
+    </div>
+</div>
+
+<!-- Tab Bar Inferior (Mobile) -->
+<div class="lg:hidden fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-gray-100 z-[90] px-6 py-3 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
+    <div class="flex items-center justify-between max-w-md mx-auto">
+        <a href="/" class="tab-item text-primario"><i class="bi bi-house-door-fill text-xl"></i><span>Inicio</span></a>
+        <button id="btnOpenMobileMenuTab" class="tab-item"><i class="bi bi-grid text-xl"></i><span>Menú</span></button>
+        <button class="tab-item" onclick="document.getElementById('btnOpenCart').click()">
+            <div class="relative">
+                <i class="bi bi-bag text-xl"></i>
+                <span class="cart-badge-count hidden absolute -top-1.5 -right-1.5 bg-primario text-white text-[8px] font-black rounded-full w-4 h-4 flex items-center justify-center border-2 border-white">0</span>
+            </div>
+            <span>Bolsa</span>
+        </button>
+    </div>
+</div>
+
+<script>
+    // Lógica de Menú
+    const btnOpen = document.getElementById('btnOpenMobileMenu');
+    const btnOpenTab = document.getElementById('btnOpenMobileMenuTab');
+    const btnClose = document.getElementById('btnCloseMobileMenu');
+    const menu = document.getElementById('mobileMenu');
+    const overlay = document.getElementById('mobileMenuOverlay');
+
+    const toggleMenu = (show) => {
+        if (show) { menu.classList.remove('-translate-x-full'); overlay.classList.remove('opacity-0', 'pointer-events-none'); }
+        else { menu.classList.add('-translate-x-full'); overlay.classList.add('opacity-0', 'pointer-events-none'); }
+    };
+
+    btnOpen?.addEventListener('click', () => toggleMenu(true));
+    btnOpenTab?.addEventListener('click', () => toggleMenu(true));
+    btnClose?.addEventListener('click', () => toggleMenu(false));
+    overlay?.addEventListener('click', () => toggleMenu(false));
+
+    // Lógica de Búsqueda
+    const desktopSearch = document.getElementById('desktop-search') as HTMLInputElement;
+    const mobileSearch = document.getElementById('mobile-search') as HTMLInputElement;
+
+    const doSearch = (term: string) => {
+        const trimmed = term.trim();
+        if (trimmed) {
+            window.location.href = `/?buscar=${encodeURIComponent(trimmed)}`;
+        }
+    };
+
+    desktopSearch?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doSearch(desktopSearch.value);
+    });
+    mobileSearch?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') doSearch(mobileSearch.value);
+    });
+    document.getElementById('btn-desktop-search')?.addEventListener('click', () => doSearch(desktopSearch?.value || ''));
+    document.getElementById('btn-mobile-search')?.addEventListener('click', () => doSearch(mobileSearch?.value || ''));
+
+    // Pre-llenar los inputs con el término buscado actual
+    const currentBuscar = new URLSearchParams(window.location.search).get('buscar');
+    if (currentBuscar) {
+        if (desktopSearch) desktopSearch.value = currentBuscar;
+        if (mobileSearch) mobileSearch.value = currentBuscar;
+    }
+</script>
+
+<style>
+    @reference "../styles/global.css";
+    .nav-link-premium { @apply text-[11px] font-black uppercase tracking-[3px] text-gray-900 px-4 py-2 hover:opacity-60 transition-all no-underline; }
+    .brand-logo { @apply text-xl lg:text-3xl font-black tracking-[6px] lg:tracking-[10px] text-gray-900 uppercase hover:text-primario transition-all no-underline; }
+    .mobile-nav-link { @apply px-8 py-5 text-[11px] font-bold text-gray-600 hover:bg-gray-50 uppercase tracking-[2px] transition-all no-underline; }
+    .tab-item { @apply flex flex-col items-center gap-1.5 text-gray-400 no-underline transition-all; }
+    .tab-item span { @apply text-[8px] font-black uppercase tracking-[2px]; }
+    .pb-safe { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)); }
+</style>

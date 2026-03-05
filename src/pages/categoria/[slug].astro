@@ -1,0 +1,210 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Navbar from '../../components/Navbar.astro';
+import ProductCard from '../../components/ProductCard.astro';
+import Footer from '../../components/Footer.astro';
+import { SITE_CONFIG } from '../../config';
+
+const { API_BASE, TIENDA_SLUG } = SITE_CONFIG;
+
+export async function getStaticPaths() {
+    const { API_BASE, TIENDA_SLUG } = SITE_CONFIG;
+    try {
+        const res = await fetch(`${API_BASE}/tiendas/${TIENDA_SLUG}/categorias`);
+        if (!res.ok) return [];
+        const categorias = await res.json();
+        return categorias.map((cat: { Slug: string }) => ({ params: { slug: cat.Slug } }));
+    } catch {
+        return [];
+    }
+}
+
+const { slug } = Astro.params;
+
+let tiendaInfo = { NombreComercial: 'Cargando...' };
+let categorias = [];
+let productos = [];
+let error = null;
+
+try {
+    const [tiendaRes, catRes] = await Promise.all([
+        fetch(`${API_BASE}/tiendas/${TIENDA_SLUG}`),
+        fetch(`${API_BASE}/tiendas/${TIENDA_SLUG}/categorias`)
+    ]);
+
+    if (tiendaRes.ok) tiendaInfo = await tiendaRes.json();
+    if (catRes.ok) categorias = await catRes.json();
+
+    const prodRes = await fetch(`${API_BASE}/tiendas/${TIENDA_SLUG}/productos?categoria=${slug}`);
+    if (prodRes.ok) productos = await prodRes.json();
+} catch (e) {
+    error = "Error de conexión.";
+}
+
+const categoriaActual = categorias.find(c => c.Slug === slug);
+---
+
+<Layout title={`${categoriaActual?.Nombre || 'Categoría'} - ${tiendaInfo.NombreComercial}`}>
+	<Navbar tiendaNombre={tiendaInfo.NombreComercial} categorias={categorias} />
+	
+	<main class="w-full flex-grow pb-32 lg:pb-12">
+        <div class="px-6 lg:px-12 py-10 lg:py-16">
+            <span class="text-[10px] font-black text-primario uppercase tracking-[4px] mb-2 block text-center lg:text-left">Categoría</span>
+            <h1 class="text-4xl lg:text-6xl font-black text-gray-900 uppercase tracking-tighter text-center lg:text-left">{categoriaActual?.Nombre || 'Explorar'}</h1>
+        </div>
+
+        {productos.length === 0 ? (
+            <div class="py-20 text-center opacity-30">
+                <i class="bi bi-bag-x text-6xl mb-4 block"></i>
+                <p class="text-xs font-black uppercase tracking-[3px]">No hay productos en esta categoría</p>
+            </div>
+        ) : (
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-px lg:gap-4 bg-gray-100 lg:bg-transparent">
+                {productos.map((prod) => (
+                    <ProductCard 
+                        id={prod.Id}
+                        nombre={prod.Nombre}
+                        precio={prod.PrecioDetal}
+                        imagen={prod.ImagenPrincipal}
+                        categoria={prod.CategoriaNombre}
+                        descripcion={prod.Descripcion}
+                        tallas={prod.Tallas}
+                        colores={prod.Colores}
+                    />
+                ))}
+            </div>
+        )}
+	</main>
+
+	<Footer />
+
+    <!-- REUTILIZAMOS LOS MODALES (IGUAL QUE EN INDEX) -->
+    <div id="productModalOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-md z-[300] hidden flex items-center justify-center p-4 lg:p-10 transition-opacity duration-300 opacity-0">
+        <div id="productModal" class="bg-white w-full max-w-6xl max-h-[95vh] lg:max-h-[90vh] rounded-[2.5rem] overflow-hidden shadow-2xl relative translate-y-10 transition-transform duration-300 opacity-0">
+            <button id="btnCloseModal" class="absolute top-6 right-6 lg:top-10 lg:right-10 z-10 w-12 h-12 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-lg transition-all"><i class="bi bi-x-lg"></i></button>
+            <div id="modalContent" class="h-full overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <div id="cartOverlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[400] hidden transition-opacity duration-300 opacity-0"></div>
+    <div id="cartOffcanvas" class="fixed top-0 right-0 h-full w-full max-w-[450px] bg-white z-[401] translate-x-full transition-transform duration-300 shadow-2xl flex flex-col">
+        <div class="px-8 py-8 border-b border-gray-50 flex items-center justify-between">
+            <h5 class="font-black text-xs uppercase tracking-[4px]">Mi Bolsa</h5>
+            <button id="btnCloseCart" class="p-2 text-gray-400"><i class="bi bi-x-lg"></i></button>
+        </div>
+        <div id="cartItems" class="flex-grow overflow-y-auto px-6 py-6 bg-gray-50/30"></div>
+        <div id="cartFooter" class="p-8 bg-white border-t border-gray-100 hidden">
+            <div class="flex justify-between items-center mb-8">
+                <span class="text-[10px] font-black uppercase tracking-[3px] text-gray-400">Total Bolsa</span>
+                <span id="cartTotal" class="text-2xl font-black text-gray-900">$0</span>
+            </div>
+            <button class="w-full bg-gray-900 text-white text-[11px] font-black uppercase tracking-[4px] py-6 rounded-[2rem] shadow-xl">Finalizar Pedido</button>
+        </div>
+    </div>
+</Layout>
+
+<script>
+    // IMPORTANTE: Mantenemos la misma lógica de interactividad que en index.astro
+    import { SITE_CONFIG } from '../../config';
+    const { API_BASE } = SITE_CONFIG;
+
+    let cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    let selectedProduct = null;
+    let selectedVarianteId = null;
+    let currentStock = 0;
+
+    const modalOverlay = document.getElementById('productModalOverlay');
+    const modal = document.getElementById('productModal');
+    const modalContent = document.getElementById('modalContent');
+    const cartOverlay = document.getElementById('cartOverlay');
+    const cartOffcanvas = document.getElementById('cartOffcanvas');
+    const cartItemsContainer = document.getElementById('cartItems');
+    const cartFooter = document.getElementById('cartFooter');
+    const cartTotal = document.getElementById('cartTotal');
+
+    const toggleModal = (show) => {
+        if (show) { modalOverlay.classList.remove('hidden'); setTimeout(() => { modalOverlay.classList.add('opacity-100'); modal.classList.add('translate-y-0', 'opacity-100'); }, 10); document.body.style.overflow = 'hidden'; }
+        else { modalOverlay.classList.remove('opacity-100'); modal.classList.remove('translate-y-0', 'opacity-100'); setTimeout(() => { modalOverlay.classList.add('hidden'); document.body.style.overflow = ''; }, 300); }
+    };
+
+    const toggleCart = (show) => {
+        if (show) { cartOverlay.classList.remove('hidden'); setTimeout(() => { cartOverlay.classList.add('opacity-100'); cartOffcanvas.classList.remove('translate-x-full'); }, 10); document.body.style.overflow = 'hidden'; }
+        else { cartOverlay.classList.remove('opacity-100'); cartOffcanvas.classList.add('translate-x-full'); setTimeout(() => { cartOverlay.classList.add('hidden'); document.body.style.overflow = ''; }, 300); }
+    };
+
+    function updateCartUI() {
+        localStorage.setItem('cart', JSON.stringify(cart));
+        const totalItemsCount = cart.reduce((acc, item) => acc + item.cantidad, 0);
+        document.querySelectorAll('.cart-badge-count').forEach(b => { b.textContent = totalItemsCount; b.classList.toggle('hidden', totalItemsCount === 0); });
+        if (cart.length === 0) { cartItemsContainer.innerHTML = `<div class="h-full flex flex-col items-center justify-center opacity-20"><i class="bi bi-bag-x text-6xl mb-4"></i><p class="text-[10px] font-black uppercase tracking-[3px]">Tu bolsa está vacía</p></div>`; cartFooter.classList.add('hidden'); }
+        else {
+            let total = 0;
+            cartItemsContainer.innerHTML = cart.map((item, i) => {
+                total += item.precio * item.cantidad;
+                const isMax = item.cantidad >= item.stockMax;
+                return `<div class="flex gap-5 bg-white p-5 rounded-3xl mb-4 shadow-sm border border-gray-50 group"><img src="${item.imagen}" class="w-20 h-28 object-cover rounded-2xl bg-gray-100" /><div class="flex-grow py-1 flex flex-col"><div class="flex justify-between"><h4 class="text-[10px] font-black uppercase tracking-wider text-gray-900">${item.nombre}</h4><button onclick="removeFromCart(${i})" class="text-gray-300 hover:text-red-500 transition-colors"><i class="bi bi-trash3"></i></button></div><p class="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-widest">${item.varianteLabel || ''}</p><div class="mt-auto flex justify-between items-center"><div class="flex flex-col gap-1"><div class="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-100"><button onclick="updateQty(${i}, -1)" class="w-7 h-7 flex items-center justify-center font-bold hover:text-primario transition-colors">-</button><span class="w-8 text-center text-[10px] font-black">${item.cantidad}</span><button onclick="updateQty(${i}, 1)" class="w-7 h-7 flex items-center justify-center font-bold transition-colors ${isMax ? 'text-gray-200 cursor-not-allowed' : 'hover:text-primario'}" ${isMax ? 'disabled' : ''}>+</button></div>${isMax ? `<span class="text-[7px] text-red-400 font-bold uppercase tracking-tighter">Límite de stock</span>` : ''}</div><span class="text-xs font-black text-gray-900">${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(item.precio * item.cantidad)}</span></div></div></div>`;
+            }).join('');
+            cartTotal.textContent = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(total); cartFooter.classList.remove('hidden');
+        }
+    }
+
+    (window as any).removeFromCart = (i) => { cart.splice(i, 1); updateCartUI(); };
+    (window as any).updateQty = (i, d) => { const item = cart[i]; const nextQty = item.cantidad + d; if (nextQty >= 1 && nextQty <= item.stockMax) { item.cantidad = nextQty; updateCartUI(); } };
+
+    async function openProductModal(id) {
+        modalContent.innerHTML = `<div class="flex items-center justify-center p-32"><div class="loading-spinner"></div></div>`;
+        toggleModal(true);
+        try {
+            const res = await fetch(`${API_BASE}/productos/${id}`);
+            const prod = await res.json();
+            selectedProduct = prod; selectedVarianteId = null; currentStock = prod.StockActual;
+            renderModal(prod);
+        } catch (e) { modalContent.innerHTML = `<p class="p-20 text-center font-bold uppercase tracking-widest text-xs text-red-500">Error al cargar producto</p>`; }
+    }
+
+    function renderModal(prod) {
+        const fmt = (p) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(p);
+        const variaciones = prod.Variaciones || [];
+        const hasVars = variaciones.length > 0;
+        modalContent.innerHTML = `<div class="flex flex-col lg:grid lg:grid-cols-2 lg:min-h-[70vh]"><div class="bg-gray-100 flex items-center justify-center p-4"><img src="${prod.Imagenes?.[0]?.Url}" class="w-full h-auto max-h-[85vh] object-contain rounded-3xl shadow-sm" /></div><div class="p-8 lg:p-16 flex flex-col bg-white"><span class="text-[10px] font-black text-primario uppercase tracking-[3px] mb-4">${prod.CategoriaNombre || 'Colección'}</span><h2 class="text-3xl lg:text-4xl font-black text-gray-900 mb-6 uppercase tracking-tight">${prod.Nombre}</h2><p class="text-sm text-gray-500 leading-relaxed mb-10 max-w-md">${prod.Descripcion || 'Sin descripción disponible.'}</p><div class="mb-12"><span class="text-4xl font-black text-gray-900 tracking-tighter">${fmt(prod.PrecioDetal)}</span></div><div class="space-y-10 mb-12">${hasVars ? `<div><span class="text-[10px] font-black uppercase tracking-[2px] text-gray-400 block mb-4">Selecciona una opción</span><div class="flex flex-wrap gap-2">${variaciones.map(v => `<button onclick="selectVariant(${v.Id}, ${v.StockActual}, '${v.Atributo}: ${v.Valor}', this)" class="px-6 py-3 border-2 border-gray-100 rounded-2xl text-xs font-black uppercase transition-all ${v.StockActual <= 0 ? 'opacity-40 cursor-not-allowed line-through' : 'hover:border-gray-900'}" ${v.StockActual <= 0 ? 'disabled' : ''}>${v.Valor}</button>`).join('')}</div></div>` : ''}<div id="stock-display" class="text-[10px] font-bold uppercase tracking-widest ${prod.StockActual > 0 ? 'text-green-500' : 'text-red-500'}">Stock disponible: ${prod.StockActual} unidades</div></div><div class="mt-auto flex flex-col sm:flex-row gap-4"><div class="flex items-center bg-gray-100 rounded-[1.5rem] p-1 justify-between sm:justify-start"><button onclick="updateModalQty(-1)" class="w-12 h-12 font-bold text-lg">-</button><input type="number" id="modal-qty" value="1" class="w-12 bg-transparent text-center font-black text-sm outline-none" readonly /><button onclick="updateModalQty(1)" class="w-12 h-12 font-bold text-lg">+</button></div><button id="btn-add-main" onclick="addToCart()" class="flex-grow bg-gray-900 hover:bg-black text-white text-[11px] font-black uppercase tracking-[4px] py-5 rounded-[1.5rem] shadow-2xl transition-all flex items-center justify-center gap-4 ${prod.StockActual <= 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${prod.StockActual <= 0 ? 'disabled' : ''}>${prod.StockActual > 0 ? 'Agregar a la bolsa' : 'Agotado'}</button></div></div></div>`;
+    }
+
+    (window as any).selectVariant = (id, stock, label, btn) => {
+        btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('bg-gray-900', 'text-white', 'border-gray-900'));
+        btn.classList.add('bg-gray-900', 'text-white', 'border-gray-900');
+        selectedVarianteId = id; currentStock = stock; (window as any).varianteLabel = label;
+        const stockDisplay = document.getElementById('stock-display');
+        stockDisplay.textContent = `Stock disponible: ${stock} unidades`;
+        stockDisplay.className = `text-[10px] font-bold uppercase tracking-widest ${stock > 0 ? 'text-green-500' : 'text-red-500'}`;
+        const btnAdd = document.getElementById('btn-add-main') as HTMLButtonElement;
+        if (stock <= 0) { btnAdd.disabled = true; btnAdd.textContent = 'Agotado'; btnAdd.classList.add('opacity-50'); }
+        else { btnAdd.disabled = false; btnAdd.textContent = 'Agregar a la bolsa'; btnAdd.classList.remove('opacity-50'); }
+        (document.getElementById('modal-qty') as HTMLInputElement).value = "1";
+    };
+
+    (window as any).updateModalQty = (d) => { const i = document.getElementById('modal-qty') as HTMLInputElement; const nextVal = parseInt(i.value) + d; if (nextVal >= 1 && nextVal <= currentStock) { i.value = nextVal.toString(); } };
+
+    (window as any).addToCart = () => {
+        if (selectedProduct.Variaciones?.length > 0 && !selectedVarianteId) { alert('Selecciona una opción'); return; }
+        const qty = parseInt((document.getElementById('modal-qty') as HTMLInputElement).value);
+        const item = { id: selectedProduct.Id, nombre: selectedProduct.Nombre, precio: selectedProduct.PrecioDetal, imagen: selectedProduct.Imagenes?.[0]?.Url || '', varianteId: selectedVarianteId, varianteLabel: (window as any).varianteLabel || '', stockMax: currentStock, cantidad: qty };
+        const idx = cart.findIndex(i => i.id === item.id && i.varianteId === item.varianteId);
+        if (idx > -1) cart[idx].cantidad = Math.min(cart[idx].cantidad + qty, currentStock);
+        else cart.push(item);
+        updateCartUI(); toggleModal(false); toggleCart(true);
+    };
+
+    document.addEventListener('click', (e) => { const card = (e.target as HTMLElement).closest('.product-card'); if (card) openProductModal(card.getAttribute('data-id')); });
+    document.querySelectorAll('#btnOpenCart, .btnOpenCart').forEach(b => b.addEventListener('click', () => toggleCart(true)));
+    document.getElementById('btnCloseCart').addEventListener('click', () => toggleCart(false));
+    cartOverlay.addEventListener('click', () => toggleCart(false));
+    document.getElementById('btnCloseModal').addEventListener('click', () => toggleModal(false));
+    modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) toggleModal(false); });
+
+    updateCartUI();
+</script>
+
+<style is:global>
+    .loading-spinner { width: 30px; height: 30px; border: 3px solid #f3f3f3; border-top: 3px solid #000; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
