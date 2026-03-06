@@ -8,9 +8,13 @@ interface Props {
     descripcion?: string;
     tallas?: string;
     colores?: string;
+	/** Precio original (tachado) cuando hay oferta */
+	precioOriginal?: number;
+	/** Indica si el producto tiene oferta activa */
+	tieneOferta?: boolean;
 }
 
-const { id, nombre, precio, imagen, categoria, descripcion, tallas, colores } = Astro.props;
+const { id, nombre, precio, imagen, categoria, descripcion, tallas, colores, precioOriginal, tieneOferta } = Astro.props;
 
 const formatPrice = (p: number) => {
     return new Intl.NumberFormat('es-CO', {
@@ -53,7 +57,14 @@ const coloresArray = colores ? colores.split(',') : [];
         
         <div class="mt-auto">
             <p class="text-lg lg:text-xl font-black text-gray-900 mb-4">
-                {formatPrice(precio)}
+                {tieneOferta && precioOriginal != null ? (
+                    <span>
+                        <span class="line-through text-gray-400 font-semibold mr-2">{formatPrice(precioOriginal)}</span>
+                        <span class="text-primario">{formatPrice(precio)}</span>
+                    </span>
+                ) : (
+                    formatPrice(precio)
+                )}
             </p>
 
             <div class="flex flex-col gap-3 border-t border-gray-100 pt-5">

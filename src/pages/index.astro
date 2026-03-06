@@ -107,12 +107,14 @@ try {
                     <ProductCard 
                         id={prod.Id}
                         nombre={prod.Nombre}
-                        precio={prod.PrecioDetal}
+                        precio={prod.TieneOferta && prod.PrecioOferta != null ? prod.PrecioOferta : prod.PrecioDetal}
                         imagen={prod.ImagenPrincipal}
                         categoria={prod.CategoriaNombre}
                         descripcion={prod.Descripcion}
                         tallas={prod.Tallas}
                         colores={prod.Colores}
+                        precioOriginal={prod.TieneOferta ? prod.PrecioDetal : undefined}
+                        tieneOferta={prod.TieneOferta}
                     />
                 ))}
             </div>
@@ -121,16 +123,90 @@ try {
 
 	<Footer />
 
-    <!-- MODAL DE PRODUCTO (VISTA COMPLETA) -->
-    <div id="productModalOverlay" class="fixed inset-0 bg-white z-[300] hidden transition-opacity duration-300 opacity-0 overflow-y-auto">
-        <div id="productModal" class="w-full min-h-full bg-white relative translate-y-10 transition-transform duration-500 ease-out">
-            <button id="btnCloseModal" class="fixed top-6 right-6 z-[310] w-12 h-12 bg-gray-100/80 backdrop-blur-md hover:bg-gray-200 rounded-full flex items-center justify-center shadow-sm transition-all">
-                <i class="bi bi-x-lg text-lg"></i>
+    <!-- MODAL DE PRODUCTO (CENTRADO EN PC) -->
+    <div id="productPanelOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[300] hidden opacity-0 transition-opacity duration-300"></div>
+    <div id="productPanel" class="fixed inset-0 z-[301] flex items-center justify-center p-0 md:p-6 opacity-0 pointer-events-none translate-y-6 transition-all duration-300 ease-out">
+        <div class="relative w-full h-full md:h-auto md:max-h-[calc(100vh-3rem)] md:max-w-5xl bg-white md:rounded-3xl overflow-hidden shadow-2xl">
+
+            <!-- Botón cerrar -->
+            <button id="btnClosePanel" class="absolute top-4 right-4 z-10 w-10 h-10 bg-black/25 hover:bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center transition-all">
+                <i class="bi bi-x-lg text-sm text-white"></i>
             </button>
-            <div id="modalContent" class="w-full">
-                <!-- Inyectado por JS -->
+
+            <!-- Contenido scrollable -->
+            <div id="panelContent" class="h-full md:max-h-[calc(100vh-3rem)] overflow-y-auto" style="-webkit-overflow-scrolling:touch">
+                <div class="flex flex-col md:flex-row h-full">
+                    <!-- Columna de imágenes -->
+                    <div class="md:w-1/2 bg-gray-50">
+                        <div class="relative w-full bg-gray-50 h-[280px] sm:h-[320px] md:h-[520px]">
+                            <img id="panelMainImg" src="" alt="" class="w-full h-full object-contain md:object-cover" />
+                            <button
+                                type="button"
+                                onclick="openPanelImageFullscreen()"
+                                class="absolute bottom-4 right-4 z-10 w-9 h-9 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center text-xs shadow-md"
+                                aria-label="Ampliar imagen"
+                            >
+                                <i class="bi bi-arrows-fullscreen"></i>
+                            </button>
+                        </div>
+                        <div id="panelThumbs" class="hidden gap-2 overflow-x-auto px-4 py-3 bg-gray-50 border-t border-gray-100"></div>
+                    </div>
+
+                    <!-- Columna de detalle -->
+                    <div class="md:w-1/2 px-6 py-6 flex flex-col gap-6">
+                        <div class="flex items-start justify-between gap-4">
+                            <h2 id="panelNombre" class="text-xl font-black text-gray-900 uppercase tracking-tighter leading-tight flex-1"></h2>
+                            <span id="panelPrecio" class="text-xl font-black text-gray-900 tracking-tighter shrink-0"></span>
+                        </div>
+
+                        <p id="panelDescripcion" class="hidden text-xs text-gray-400 leading-relaxed"></p>
+
+                        <div id="panelVariantes" class="hidden flex-col gap-2">
+                            <span class="text-[9px] font-black uppercase tracking-[2px] text-gray-400">Selecciona una opción</span>
+                            <div id="panelVariantesBtns" class="flex flex-wrap gap-2"></div>
+                        </div>
+
+                        <div class="flex items-center justify-between py-4 border-t border-b border-gray-100">
+                            <div id="panelStock" class="text-[10px] font-bold uppercase tracking-widest text-green-500"></div>
+                            <div class="flex items-center bg-gray-100 rounded-xl overflow-hidden">
+                                <button onclick="updatePanelQty(-1)" class="w-10 h-10 font-black text-base hover:bg-gray-200 transition-colors">−</button>
+                                <input type="number" id="panel-qty" value="1" class="w-10 bg-transparent text-center font-black text-sm outline-none" readonly />
+                                <button onclick="updatePanelQty(1)" class="w-10 h-10 font-black text-base hover:bg-gray-200 transition-colors">+</button>
+                            </div>
+                        </div>
+
+                        <button
+                            id="panelBtnAdd"
+                            onclick="addToCartFromPanel()"
+                            class="w-full bg-gray-900 hover:bg-black text-white text-[11px] font-black uppercase tracking-[4px] py-5 rounded-2xl shadow-lg transition-all flex items-center justify-center gap-3"
+                        >
+                            <i class="bi bi-bag-plus text-sm"></i>
+                            <span>Añadir a mi bolsa</span>
+                        </button>
+
+                        <div class="h-6"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading state -->
+            <div id="panelLoading" class="hidden absolute inset-0 bg-white flex items-center justify-center">
+                <div class="loading-spinner"></div>
             </div>
         </div>
+    </div>
+
+    <!-- OVERLAY IMAGEN AMPLIADA (PANEL PRODUCTO) -->
+    <div id="panelImageFullscreenOverlay" class="fixed inset-0 bg-black/90 z-[700] hidden flex items-center justify-center p-4">
+        <button id="btnClosePanelImageFullscreen" class="absolute top-6 right-6 w-10 h-10 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center shadow-lg">
+            <i class="bi bi-x-lg text-base"></i>
+        </button>
+        <img
+            id="panelImageFullscreenImg"
+            src=""
+            alt="Vista ampliada del producto"
+            class="max-h-full max-w-full object-contain rounded-2xl shadow-2xl"
+        />
     </div>
 
     <!-- CARRITO LATERAL -->
@@ -243,6 +319,10 @@ try {
         const tallas = prod.Tallas ? prod.Tallas.split(',').filter(Boolean) : [];
         const colores = prod.Colores ? prod.Colores.split(',').filter(Boolean) : [];
         const img = prod.ImagenPrincipal || 'https://via.placeholder.com/600x900?text=Sin+Imagen';
+        const precioMostrar = prod.TieneOferta && prod.PrecioOferta != null ? prod.PrecioOferta : prod.PrecioDetal;
+        const precioHtml = prod.TieneOferta && prod.PrecioDetal != null
+            ? `<span class="line-through text-gray-400 font-semibold mr-2">${fmtPrice(prod.PrecioDetal)}</span><span class="text-primario">${fmtPrice(precioMostrar)}</span>`
+            : fmtPrice(precioMostrar);
         return `
             <div class="product-card group relative flex flex-col h-full bg-white transition-all cursor-pointer border border-gray-50 hover:shadow-2xl" data-id="${prod.Id}">
                 <div class="relative overflow-hidden bg-gray-50 aspect-[2/3]">
@@ -255,7 +335,7 @@ try {
                 <div class="p-5 lg:p-8 flex flex-col flex-grow text-center">
                     <h3 class="text-sm lg:text-base font-bold text-gray-900 uppercase tracking-widest mb-2 line-clamp-1 group-hover:text-primario transition-colors">${prod.Nombre}</h3>
                     <div class="mt-auto">
-                        <p class="text-lg lg:text-xl font-black text-gray-900 mb-4">${fmtPrice(prod.PrecioDetal)}</p>
+                        <p class="text-lg lg:text-xl font-black text-gray-900 mb-4">${precioHtml}</p>
                         <div class="flex flex-col gap-3 border-t border-gray-100 pt-5">
                             ${colores.length > 0 ? `<div class="flex flex-wrap gap-1.5 justify-center items-center">${colores.map((c: string) => `<div class="flex flex-col items-center gap-1"><span class="text-[8px] font-bold text-gray-400 uppercase tracking-tighter line-clamp-1 max-w-[50px]">${c.trim()}</span><div class="w-3 h-3 rounded-full border border-gray-200 bg-gray-100 shadow-inner"></div></div>`).join('')}</div>` : ''}
                             ${tallas.length > 0 ? `<div class="flex flex-wrap gap-1 justify-center">${tallas.map((t: string) => `<span class="text-[9px] font-bold text-gray-400 bg-gray-50 border border-gray-100 px-1.5 py-0.5 rounded uppercase">${t.trim()}</span>`).join('')}</div>` : ''}
@@ -299,46 +379,90 @@ try {
     let cart = JSON.parse(localStorage.getItem('cart') || '[]');
     let selectedProduct = null;
     let selectedVarianteId = null;
+    let selectedVariantePrecioAdicional = 0;
     let currentStock = 0;
 
-    const modalOverlay = document.getElementById('productModalOverlay');
-    const modal = document.getElementById('productModal');
-    const modalContent = document.getElementById('modalContent');
-    const btnCloseModal = document.getElementById('btnCloseModal');
-    const cartOverlay = document.getElementById('cartOverlay');
-    const cartOffcanvas = document.getElementById('cartOffcanvas');
-    const cartItemsContainer = document.getElementById('cartItems');
-    const cartFooter = document.getElementById('cartFooter');
-    const cartTotal = document.getElementById('cartTotal');
-    const cartItemCount = document.getElementById('cart-item-count');
-    const btnCloseCart = document.getElementById('btnCloseCart');
+    // Panel lateral de producto
+    const panelOverlay  = document.getElementById('productPanelOverlay');
+    const panel         = document.getElementById('productPanel');
+    const panelContent  = document.getElementById('panelContent');
+    const panelLoading  = document.getElementById('panelLoading');
+    const btnClosePanel = document.getElementById('btnClosePanel');
+    const panelImageFullscreenOverlay = document.getElementById('panelImageFullscreenOverlay');
+    const btnClosePanelImageFullscreen = document.getElementById('btnClosePanelImageFullscreen');
 
-    const toggleModal = (show) => {
+    // Carrito
+    const cartOverlay        = document.getElementById('cartOverlay');
+    const cartOffcanvas      = document.getElementById('cartOffcanvas');
+    const cartItemsContainer = document.getElementById('cartItems');
+    const cartFooter         = document.getElementById('cartFooter');
+    const cartTotal          = document.getElementById('cartTotal');
+    const cartItemCount      = document.getElementById('cart-item-count');
+    const btnCloseCart       = document.getElementById('btnCloseCart');
+
+    let _scrollY = 0;
+    const lockBody = () => {
+        _scrollY = window.scrollY;
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${_scrollY}px`;
+        document.body.style.width = '100%';
+    };
+    const unlockBody = () => {
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.width = '';
+        window.scrollTo(0, _scrollY);
+    };
+
+    const togglePanel = (show) => {
         if (show) {
-            modalOverlay.classList.remove('hidden');
+            lockBody();
+            panelContent.scrollTop = 0;
+            panelOverlay.classList.remove('hidden');
             setTimeout(() => {
-                modalOverlay.classList.add('opacity-100');
-                modal.classList.add('translate-y-0', 'opacity-100');
+                panelOverlay.classList.add('opacity-100');
+                panel.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-6');
+                panel.classList.add('opacity-100', 'translate-y-0');
             }, 10);
-            document.body.style.overflow = 'hidden';
         } else {
-            modalOverlay.classList.remove('opacity-100');
-            modal.classList.remove('translate-y-0', 'opacity-100');
+            panelOverlay.classList.remove('opacity-100');
+            panel.classList.remove('opacity-100', 'translate-y-0');
+            panel.classList.add('opacity-0', 'pointer-events-none', 'translate-y-6');
             setTimeout(() => {
-                modalOverlay.classList.add('hidden');
-                document.body.style.overflow = '';
+                panelOverlay.classList.add('hidden');
+                panelImageFullscreenOverlay?.classList.add('hidden');
+                unlockBody();
             }, 300);
         }
     };
 
+    const closePanelImageFullscreen = () => {
+        panelImageFullscreenOverlay?.classList.add('hidden');
+    };
+
+    (window as any).openPanelImageFullscreen = () => {
+        const mainImg = document.getElementById('panelMainImg') as HTMLImageElement | null;
+        const fullscreenImg = document.getElementById('panelImageFullscreenImg') as HTMLImageElement | null;
+        if (!mainImg || !fullscreenImg || !panelImageFullscreenOverlay) return;
+        if (!mainImg.src) return;
+        fullscreenImg.src = mainImg.src;
+        panelImageFullscreenOverlay.classList.remove('hidden');
+    };
+
+    btnClosePanelImageFullscreen?.addEventListener('click', closePanelImageFullscreen);
+    panelImageFullscreenOverlay?.addEventListener('click', (e) => {
+        if (e.target === panelImageFullscreenOverlay) closePanelImageFullscreen();
+    });
+
     const toggleCart = (show) => {
         if (show) {
+            lockBody();
             cartOverlay.classList.remove('hidden');
             setTimeout(() => { cartOverlay.classList.add('opacity-100'); cartOffcanvas.classList.remove('translate-x-full'); }, 10);
-            document.body.style.overflow = 'hidden';
         } else {
-            cartOverlay.classList.remove('opacity-100'); cartOffcanvas.classList.add('translate-x-full');
-            setTimeout(() => { cartOverlay.classList.add('hidden'); document.body.style.overflow = ''; }, 300);
+            cartOverlay.classList.remove('opacity-100');
+            cartOffcanvas.classList.add('translate-x-full');
+            setTimeout(() => { cartOverlay.classList.add('hidden'); unlockBody(); }, 300);
         }
     };
 
@@ -395,140 +519,266 @@ try {
         if (nextQty >= 1 && nextQty <= item.stockMax) { item.cantidad = nextQty; updateCartUI(); }
     };
 
-    async function openProductModal(id) {
-        modalContent.innerHTML = `<div class="flex items-center justify-center p-32"><div class="loading-spinner"></div></div>`;
-        toggleModal(true);
+    const fmt = (p) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(p);
+
+    async function openProductPanel(id) {
+        togglePanel(true);
+        panelLoading.classList.remove('hidden');
         try {
             const res = await fetch(`${API_BASE}/productos/${id}`);
             const prod = await res.json();
             selectedProduct = prod;
             selectedVarianteId = null;
             currentStock = prod.StockActual;
-            renderModal(prod);
-        } catch (e) {
-            modalContent.innerHTML = `<p class="p-20 text-center font-bold uppercase tracking-widest text-xs text-red-500">Error al cargar producto</p>`;
+            populatePanel(prod);
+        } catch {
+            panelLoading.classList.add('hidden');
         }
     }
 
-    function renderModal(prod) {
-        const fmt = (p) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(p);
+    function populatePanel(prod) {
+        const imagenes  = prod.Imagenes || [];
+        const mainUrl   = imagenes[0]?.Url || 'https://via.placeholder.com/600x900?text=Sin+Imagen';
         const variaciones = prod.Variaciones || [];
-        const hasVars = variaciones.length > 0;
-        const imagenes = prod.Imagenes || [];
-        const mainUrl = imagenes[0]?.Url || 'https://via.placeholder.com/600x900?text=Sin+Imagen';
 
-        const thumbnailsHtml = imagenes.length > 1
-            ? `<div class="absolute bottom-4 left-0 right-0 flex gap-2 overflow-x-auto px-4 justify-center">
-                ${imagenes.map((img, i) => `
-                    <img
-                        src="${img.Url}"
-                        onclick="selectModalImage(this, '${img.Url}')"
-                        class="w-12 h-16 shrink-0 object-cover rounded-lg cursor-pointer border-2 transition-all ${i === 0 ? 'border-white shadow-lg' : 'border-transparent opacity-70 hover:opacity-100'}"
-                    />
-                `).join('')}
-               </div>`
-            : '';
+        // Imagen principal
+        const mainImg = document.getElementById('panelMainImg') as HTMLImageElement;
+        mainImg.src = mainUrl;
+        mainImg.alt = prod.Nombre;
 
-        modalContent.innerHTML = `
-            <div class="flex flex-col w-full h-screen overflow-hidden bg-white">
-                <div class="relative w-full h-[55vh] bg-gray-100">
-                    <img id="modal-main-img" src="${mainUrl}" class="w-full h-full object-cover transition-opacity duration-200" />
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
-                    ${thumbnailsHtml}
-                </div>
+        // Miniaturas
+        const thumbsEl = document.getElementById('panelThumbs');
+        if (imagenes.length > 1) {
+            thumbsEl.innerHTML = imagenes.map((img, i) => `
+                <img src="${img.Url}" onclick="selectPanelImage(this,'${img.Url}')"
+                    class="w-14 h-20 shrink-0 object-cover rounded-xl cursor-pointer border-2 transition-all ${i === 0 ? 'border-gray-900 opacity-100' : 'border-transparent opacity-40 hover:opacity-70'}" />
+            `).join('');
+            thumbsEl.classList.remove('hidden');
+            thumbsEl.classList.add('flex');
+        } else {
+            thumbsEl.classList.add('hidden');
+            thumbsEl.classList.remove('flex');
+        }
 
-                <div class="flex-grow flex flex-col p-5 lg:p-8 justify-start gap-3 max-w-4xl mx-auto w-full overflow-hidden text-left">
-                    <div class="flex flex-col w-full">
-                        <div class="flex justify-between items-start gap-4 w-full mb-1">
-                            <div>
-                                <span class="text-[8px] font-black text-primario uppercase tracking-[2px]">${prod.CategoriaNombre || 'Colección'}</span>
-                                <h2 class="text-lg lg:text-xl font-black text-gray-900 uppercase tracking-tighter leading-tight line-clamp-1">${prod.Nombre}</h2>
-                            </div>
-                            <div class="text-right shrink-0">
-                                <span class="text-xl lg:text-2xl font-black text-gray-900 tracking-tighter">${fmt(prod.PrecioDetal)}</span>
-                            </div>
-                        </div>
-                        <p class="text-[10px] lg:text-[11px] text-gray-400 leading-tight line-clamp-2 mb-3">${prod.Descripcion || 'Sin descripción disponible.'}</p>
-                    </div>
+        // Nombre y precio (precio base o con oferta)
+        (document.getElementById('panelNombre') as HTMLElement).textContent = prod.Nombre;
+        const precioEl = document.getElementById('panelPrecio') as HTMLElement;
+        const precioMostrar = prod.TieneOferta && prod.PrecioOferta != null ? prod.PrecioOferta : prod.PrecioDetal;
+        if (prod.TieneOferta && prod.PrecioDetal != null) {
+            precioEl.innerHTML = `<span class="line-through text-gray-400 font-semibold mr-2">${fmt(prod.PrecioDetal)}</span><span class="text-primario">${fmt(precioMostrar)}</span>`;
+        } else {
+            precioEl.textContent = fmt(precioMostrar);
+        }
+        selectedVariantePrecioAdicional = 0;
 
-                    <div class="w-full space-y-4">
-                        ${hasVars ? `
-                            <div class="flex flex-col items-start">
-                                <span class="text-[7px] font-black uppercase tracking-[1px] text-gray-300 mb-1">Opciones:</span>
-                                <div class="flex flex-wrap gap-1">
-                                    ${variaciones.map(v => `
-                                        <button onclick="selectVariant(${v.Id}, ${v.StockActual}, '${v.Atributo}: ${v.Valor}', this)" class="px-2.5 py-1 border border-gray-100 rounded-md text-[8px] font-black uppercase transition-all ${v.StockActual <= 0 ? 'opacity-30 cursor-not-allowed line-through' : 'hover:border-gray-900'}">${v.Valor}</button>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
-                        
-                        <div class="flex items-center justify-between border-t border-gray-50 pt-3">
-                            <div id="stock-display" class="text-[8px] font-bold uppercase tracking-widest ${prod.StockActual > 0 ? 'text-green-500' : 'text-red-400'}">
-                                Stock: ${prod.StockActual} un.
-                            </div>
-                            <div class="flex items-center bg-gray-50 rounded-lg p-0.5">
-                                <button onclick="updateModalQty(-1)" class="w-7 h-7 font-black text-xs">-</button>
-                                <input type="number" id="modal-qty" value="1" class="w-7 bg-transparent text-center font-black text-[10px] outline-none" readonly />
-                                <button onclick="updateModalQty(1)" class="w-7 h-7 font-black text-xs">+</button>
-                            </div>
-                        </div>
+        // Descripción
+        const descEl = document.getElementById('panelDescripcion');
+        if (prod.Descripcion) {
+            descEl.textContent = prod.Descripcion;
+            descEl.classList.remove('hidden');
+        } else {
+            descEl.classList.add('hidden');
+        }
 
-                        <button id="btn-add-main" onclick="addToCart()" class="w-full bg-gray-900 hover:bg-black text-white text-[9px] font-black uppercase tracking-[3px] py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 ${prod.StockActual <= 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${prod.StockActual <= 0 ? 'disabled' : ''}>
-                            ${prod.StockActual > 0 ? 'Añadir a mi bolsa' : 'Agotado'}
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
+        // Variantes
+        const varsEl    = document.getElementById('panelVariantes');
+        const varsBtns  = document.getElementById('panelVariantesBtns');
+        if (variaciones.length > 0) {
+            varsBtns.innerHTML = variaciones.map(v => {
+                const precioBaseVar = (prod.PrecioDetal || 0) + (v.PrecioAdicional ?? 0);
+                const precioOfertaVar = v.TieneOferta && v.PrecioOferta != null ? v.PrecioOferta : precioBaseVar;
+                return `
+                <button
+                    onclick="selectPanelVariant(${v.Id},${v.StockActual},'${(v.Atributo || '')}: ${(v.Valor || '').replace(/'/g, "\\'")}',this)"
+                    class="px-4 py-2 border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-wide transition-all ${v.StockActual <= 0 ? 'opacity-30 cursor-not-allowed line-through' : 'hover:border-gray-900 hover:bg-gray-900 hover:text-white'}"
+                    data-precio-adicional="${v.PrecioAdicional ?? 0}"
+                    data-precio-oferta="${precioOfertaVar}"
+                    data-precio-base="${precioBaseVar}"
+                    data-tiene-oferta="${v.TieneOferta ? '1' : '0'}"
+                >
+                    ${v.Valor}
+                    ${v.PrecioAdicional && v.PrecioAdicional !== 0
+                        ? `<span class="ml-1 text-[9px] font-normal opacity-70">(+${fmt(v.PrecioAdicional)})</span>`
+                        : ''
+                    }
+                </button>
+            `}).join('');
+            varsEl.classList.remove('hidden');
+            varsEl.classList.add('flex');
+        } else {
+            varsEl.classList.add('hidden');
+        }
+
+        // Stock
+        const stockEl = document.getElementById('panelStock');
+        stockEl.textContent = prod.StockActual > 0 ? `${prod.StockActual} disponibles` : 'Agotado';
+        stockEl.className = `text-[10px] font-bold uppercase tracking-widest ${prod.StockActual > 0 ? 'text-green-500' : 'text-red-400'}`;
+
+        // Qty
+        (document.getElementById('panel-qty') as HTMLInputElement).value = '1';
+
+        // Botón agregar
+        const btnAdd = document.getElementById('panelBtnAdd') as HTMLButtonElement;
+        if (prod.StockActual <= 0) {
+            btnAdd.disabled = true;
+            btnAdd.innerHTML = 'Agotado';
+            btnAdd.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            btnAdd.disabled = false;
+            btnAdd.innerHTML = '<i class="bi bi-bag-plus text-sm"></i><span>Añadir a mi bolsa</span>';
+            btnAdd.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        panelLoading.classList.add('hidden');
     }
 
-    (window as any).selectModalImage = (thumb, url) => {
-        const mainImg = document.getElementById('modal-main-img') as HTMLImageElement;
-        if (mainImg) {
-            mainImg.style.opacity = '0';
-            setTimeout(() => { mainImg.src = url; mainImg.style.opacity = '1'; }, 150);
-        }
+    (window as any).selectPanelImage = (thumb, url) => {
+        const mainImg = document.getElementById('panelMainImg') as HTMLImageElement;
+        mainImg.style.opacity = '0';
+        setTimeout(() => { mainImg.src = url; mainImg.style.opacity = '1'; }, 150);
         thumb.parentElement.querySelectorAll('img').forEach(img => {
-            img.classList.remove('border-gray-900');
-            img.classList.add('border-transparent');
+            img.classList.remove('border-gray-900', 'opacity-100');
+            img.classList.add('border-transparent', 'opacity-40');
         });
-        thumb.classList.remove('border-transparent');
-        thumb.classList.add('border-gray-900');
+        thumb.classList.remove('border-transparent', 'opacity-40');
+        thumb.classList.add('border-gray-900', 'opacity-100');
     };
 
-    (window as any).selectVariant = (id, stock, label, btn) => {
+    (window as any).selectPanelVariant = (id, stock, label, btn) => {
         btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('bg-gray-900', 'text-white', 'border-gray-900'));
         btn.classList.add('bg-gray-900', 'text-white', 'border-gray-900');
-        selectedVarianteId = id; currentStock = stock; (window as any).varianteLabel = label;
-        const stockDisplay = document.getElementById('stock-display');
-        stockDisplay.textContent = `Stock disponible: ${stock} unidades`;
-        stockDisplay.className = `text-[10px] font-bold uppercase tracking-widest ${stock > 0 ? 'text-green-500' : 'text-red-500'}`;
-        const btnAdd = document.getElementById('btn-add-main') as HTMLButtonElement;
-        if (stock <= 0) { btnAdd.disabled = true; btnAdd.textContent = 'Agotado'; btnAdd.classList.add('opacity-50'); }
-        else { btnAdd.disabled = false; btnAdd.textContent = 'Agregar a la bolsa'; btnAdd.classList.remove('opacity-50'); }
-        (document.getElementById('modal-qty') as HTMLInputElement).value = "1";
+        selectedVarianteId = id;
+        currentStock = stock;
+        (window as any).varianteLabel = label;
+
+        // Precio de la variante (oferta o base)
+        const adicionalAttr = (btn as HTMLButtonElement).getAttribute('data-precio-adicional');
+        selectedVariantePrecioAdicional = adicionalAttr ? Number(adicionalAttr) : 0;
+        if (isNaN(selectedVariantePrecioAdicional)) selectedVariantePrecioAdicional = 0;
+
+        const precioOfertaAttr = (btn as HTMLButtonElement).getAttribute('data-precio-oferta');
+        const precioBaseAttr = (btn as HTMLButtonElement).getAttribute('data-precio-base');
+        const tieneOfertaAttr = (btn as HTMLButtonElement).getAttribute('data-tiene-oferta');
+        const precioMostrar = precioOfertaAttr ? Number(precioOfertaAttr) : (precioBaseAttr ? Number(precioBaseAttr) : 0);
+        const precioBase = precioBaseAttr ? Number(precioBaseAttr) : 0;
+        const tieneOferta = tieneOfertaAttr === '1';
+
+        const precioEl = document.getElementById('panelPrecio') as HTMLElement | null;
+        if (precioEl) {
+            if (tieneOferta && precioBase > 0) {
+                precioEl.innerHTML = `<span class="line-through text-gray-400 font-semibold mr-2">${fmt(precioBase)}</span><span class="text-primario">${fmt(precioMostrar)}</span>`;
+            } else {
+                precioEl.textContent = fmt(precioMostrar);
+            }
+        }
+
+        const stockEl = document.getElementById('panelStock');
+        stockEl.textContent = stock > 0 ? `${stock} disponibles` : 'Agotado';
+        stockEl.className = `text-[10px] font-bold uppercase tracking-widest ${stock > 0 ? 'text-green-500' : 'text-red-500'}`;
+        const btnAdd = document.getElementById('panelBtnAdd') as HTMLButtonElement;
+        if (stock <= 0) {
+            btnAdd.disabled = true;
+            btnAdd.innerHTML = 'Agotado';
+            btnAdd.classList.add('opacity-50', 'cursor-not-allowed');
+        } else {
+            btnAdd.disabled = false;
+            btnAdd.innerHTML = '<i class="bi bi-bag-plus text-sm"></i><span>Añadir a mi bolsa</span>';
+            btnAdd.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+        (document.getElementById('panel-qty') as HTMLInputElement).value = '1';
     };
 
-    (window as any).updateModalQty = (d) => { 
-        const i = document.getElementById('modal-qty') as HTMLInputElement; 
-        const nextVal = parseInt(i.value) + d;
-        if (nextVal >= 1 && nextVal <= currentStock) { i.value = nextVal.toString(); }
+    (window as any).updatePanelQty = (d) => {
+        const input = document.getElementById('panel-qty') as HTMLInputElement;
+        const next = parseInt(input.value) + d;
+        if (next >= 1 && next <= currentStock) input.value = String(next);
     };
 
-    (window as any).addToCart = () => {
-        if (selectedProduct.Variaciones?.length > 0 && !selectedVarianteId) { alert('Selecciona una opción'); return; }
-        const qty = parseInt((document.getElementById('modal-qty') as HTMLInputElement).value);
-        const item = { id: selectedProduct.Id, nombre: selectedProduct.Nombre, precio: selectedProduct.PrecioDetal, imagen: selectedProduct.Imagenes?.[0]?.Url || '', varianteId: selectedVarianteId, varianteLabel: (window as any).varianteLabel || '', stockMax: currentStock, cantidad: qty };
+    async function applyPromotionsForItems(items: any[]) {
+        try {
+            const resp = await fetch(`${API_BASE}/promociones/calcular`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tiendaSlug: TIENDA_SLUG,
+                    items: items.map((it) => ({
+                        productoId: it.productoId,
+                        varianteId: it.varianteId ?? null,
+                        cantidad: it.cantidad,
+                        precioBase: it.precioBase,
+                    })),
+                }),
+            });
+            if (!resp.ok) return items;
+            const data = await resp.json();
+            return data.map((r: any, idx: number) => ({
+                ...items[idx],
+                precioFinal: typeof r.precioFinal === 'number' ? r.precioFinal : items[idx].precioBase,
+            }));
+        } catch {
+            return items;
+        }
+    }
+
+    (window as any).addToCartFromPanel = async () => {
+        const variaciones = selectedProduct.Variaciones || [];
+        const hasVariantes = variaciones.length > 0;
+        const algunaVarianteConStock = variaciones.some((v: any) => (v.StockActual ?? 0) > 0);
+
+        if (hasVariantes && !selectedVarianteId) {
+            if (algunaVarianteConStock) {
+                alert('Selecciona una opción');
+                return;
+            }
+            if (selectedProduct.StockActual <= 0) {
+                alert('Producto agotado');
+                return;
+            }
+            currentStock = selectedProduct.StockActual;
+        }
+
+        const qty  = parseInt((document.getElementById('panel-qty') as HTMLInputElement).value);
+        const basePrice = Number(selectedProduct.PrecioDetal) || 0;
+        let baseWithVariante = basePrice;
+
+        if (selectedVarianteId && selectedProduct.Variaciones?.length) {
+            const varianteMatch = selectedProduct.Variaciones.find((v: any) => v.Id === selectedVarianteId);
+            const adicional = varianteMatch?.PrecioAdicional ?? selectedVariantePrecioAdicional ?? 0;
+            baseWithVariante = basePrice + (Number(adicional) || 0);
+        }
+
+        const promoItems = await applyPromotionsForItems([
+            {
+                productoId: selectedProduct.Id,
+                varianteId: selectedVarianteId ?? null,
+                cantidad: qty,
+                precioBase: baseWithVariante,
+            },
+        ]);
+
+        const unitPrice = promoItems[0]?.precioFinal ?? baseWithVariante;
+
+        const item = {
+            id: selectedProduct.Id,
+            nombre: selectedProduct.Nombre,
+            precio: unitPrice,
+            imagen: selectedProduct.Imagenes?.[0]?.Url || '',
+            varianteId: selectedVarianteId || null,
+            varianteLabel: (window as any).varianteLabel || '',
+            stockMax: currentStock,
+            cantidad: qty
+        };
         const idx = cart.findIndex(i => i.id === item.id && i.varianteId === item.varianteId);
         if (idx > -1) cart[idx].cantidad = Math.min(cart[idx].cantidad + qty, currentStock);
         else cart.push(item);
-        updateCartUI(); toggleModal(false); toggleCart(true);
+        updateCartUI();
+        togglePanel(false);
+        toggleCart(true);
     };
 
     document.addEventListener('click', (e) => {
         const card = (e.target as HTMLElement).closest('.product-card');
-        if (card) openProductModal(card.getAttribute('data-id'));
+        if (card) openProductPanel(card.getAttribute('data-id'));
     });
 
     const btnCheckout = document.getElementById('btnCheckout');
@@ -615,8 +865,8 @@ try {
     document.querySelectorAll('#btnOpenCart, .btnOpenCart').forEach(b => b.addEventListener('click', () => toggleCart(true)));
     btnCloseCart.addEventListener('click', () => toggleCart(false));
     cartOverlay.addEventListener('click', () => toggleCart(false));
-    btnCloseModal.addEventListener('click', () => toggleModal(false));
-    modalOverlay.addEventListener('click', (e) => { if (e.target === modalOverlay) toggleModal(false); });
+    btnClosePanel.addEventListener('click', () => togglePanel(false));
+    panelOverlay.addEventListener('click', () => togglePanel(false));
 
     updateCartUI();
 </script>
@@ -626,4 +876,7 @@ try {
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
     input[type=number] { -moz-appearance: textfield; }
+    #panelContent {
+        -webkit-overflow-scrolling: touch;
+    }
 </style>

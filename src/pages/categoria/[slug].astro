@@ -65,12 +65,14 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
                     <ProductCard 
                         id={prod.Id}
                         nombre={prod.Nombre}
-                        precio={prod.PrecioDetal}
+                        precio={prod.TieneOferta && prod.PrecioOferta != null ? prod.PrecioOferta : prod.PrecioDetal}
                         imagen={prod.ImagenPrincipal}
                         categoria={prod.CategoriaNombre}
                         descripcion={prod.Descripcion}
                         tallas={prod.Tallas}
                         colores={prod.Colores}
+                        precioOriginal={prod.TieneOferta ? prod.PrecioDetal : undefined}
+                        tieneOferta={prod.TieneOferta}
                     />
                 ))}
             </div>
@@ -190,6 +192,19 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
             </button>
         </div>
     </div>
+
+    <!-- OVERLAY IMAGEN AMPLIADA -->
+    <div id="imageFullscreenOverlay" class="fixed inset-0 bg-black/90 z-[700] hidden flex items-center justify-center p-4">
+        <button id="btnCloseImageFullscreen" class="absolute top-6 right-6 w-10 h-10 rounded-full bg-black/60 hover:bg-black text-white flex items-center justify-center shadow-lg">
+            <i class="bi bi-x-lg text-base"></i>
+        </button>
+        <img
+            id="imageFullscreenImg"
+            src=""
+            alt="Vista ampliada del producto"
+            class="max-h-full max-w-full object-contain rounded-2xl shadow-2xl"
+        />
+    </div>
 </Layout>
 
 <script>
@@ -199,6 +214,7 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
     let cart = JSON.parse(localStorage.getItem('cart') || '[]');
     let selectedProduct = null;
     let selectedVarianteId = null;
+    let selectedVariantePrecioAdicional = 0;
     let currentStock = 0;
 
     const modalOverlay = document.getElementById('productModalOverlay');
@@ -218,6 +234,9 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
     const btnCloseCheckout = document.getElementById('btnCloseCheckout');
     const checkoutForm = document.getElementById('checkoutForm') as HTMLFormElement;
     const successModalOverlay = document.getElementById('successModalOverlay');
+
+    const imageFullscreenOverlay = document.getElementById('imageFullscreenOverlay');
+    const btnCloseImageFullscreen = document.getElementById('btnCloseImageFullscreen');
 
     const toggleModal = (show) => {
         if (show) { modalOverlay.classList.remove('hidden'); setTimeout(() => { modalOverlay.classList.add('opacity-100'); modal.classList.add('translate-y-0', 'opacity-100'); }, 10); document.body.style.overflow = 'hidden'; }
@@ -247,6 +266,51 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
         }
     };
 
+    const closeImageFullscreen = () => {
+        if (!imageFullscreenOverlay) return;
+        imageFullscreenOverlay.classList.add('hidden');
+    };
+
+    (window as any).openImageFullscreen = () => {
+        const mainImg = document.getElementById('modal-main-img') as HTMLImageElement | null;
+        const fullscreenImg = document.getElementById('imageFullscreenImg') as HTMLImageElement | null;
+        if (!mainImg || !imageFullscreenOverlay || !fullscreenImg) return;
+
+        fullscreenImg.src = mainImg.src;
+        imageFullscreenOverlay.classList.remove('hidden');
+    };
+
+    btnCloseImageFullscreen?.addEventListener('click', closeImageFullscreen);
+    imageFullscreenOverlay?.addEventListener('click', (e) => {
+        if (e.target === imageFullscreenOverlay) closeImageFullscreen();
+    });
+
+    async function applyPromotionsForItems(items: any[]) {
+        try {
+            const resp = await fetch(`${API_BASE}/promociones/calcular`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tiendaSlug: TIENDA_SLUG,
+                    items: items.map((it) => ({
+                        productoId: it.productoId,
+                        varianteId: it.varianteId ?? null,
+                        cantidad: it.cantidad,
+                        precioBase: it.precioBase,
+                    })),
+                }),
+            });
+            if (!resp.ok) return items;
+            const data = await resp.json();
+            return data.map((r: any, idx: number) => ({
+                ...items[idx],
+                precioFinal: typeof r.precioFinal === 'number' ? r.precioFinal : items[idx].precioBase,
+            }));
+        } catch {
+            return items;
+        }
+    }
+
     function updateCartUI() {
         localStorage.setItem('cart', JSON.stringify(cart));
         const totalItemsCount = cart.reduce((acc, item) => acc + item.cantidad, 0);
@@ -272,7 +336,7 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
         modalContent.innerHTML = `<div class="flex items-center justify-center p-32"><div class="loading-spinner"></div></div>`;
         toggleModal(true);
         try {
-            const res = await fetch(`${API_BASE}/public/productos/${id}`);
+            const res = await fetch(`${API_BASE}/productos/${id}`);
             const prod = await res.json();
             selectedProduct = prod; selectedVarianteId = null; currentStock = prod.StockActual;
             renderModal(prod);
@@ -299,14 +363,21 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
             : '';
 
         modalContent.innerHTML = `
-            <div class="flex flex-col w-full h-screen overflow-hidden bg-white">
+            <div class="flex flex-col w-full min-h-screen bg-white">
                 <div class="relative w-full h-[55vh] bg-gray-100">
                     <img id="modal-main-img" src="${mainUrl}" class="w-full h-full object-cover transition-opacity duration-200" />
+                    <button
+                        type="button"
+                        onclick="openImageFullscreen()"
+                        class="absolute bottom-4 right-4 z-10 w-9 h-9 bg-black/40 hover:bg-black/60 text-white rounded-full flex items-center justify-center text-xs shadow-md"
+                    >
+                        <i class="bi bi-arrows-fullscreen"></i>
+                    </button>
                     <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
                     ${thumbnailsHtml}
                 </div>
 
-                <div class="flex-grow flex flex-col p-5 lg:p-8 justify-start gap-3 max-w-4xl mx-auto w-full overflow-hidden text-left">
+                <div class="flex-grow flex flex-col p-5 lg:p-8 justify-start gap-3 max-w-4xl mx-auto w-full overflow-y-auto text-left min-h-0" style="-webkit-overflow-scrolling: touch;">
                     <div class="flex flex-col w-full">
                         <div class="flex justify-between items-start gap-4 w-full mb-1">
                             <div>
@@ -314,7 +385,9 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
                                 <h2 class="text-lg lg:text-xl font-black text-gray-900 uppercase tracking-tighter leading-tight line-clamp-1">${prod.Nombre}</h2>
                             </div>
                             <div class="text-right shrink-0">
-                                <span class="text-xl lg:text-2xl font-black text-gray-900 tracking-tighter">${fmt(prod.PrecioDetal)}</span>
+                                <span id="modal-price" class="text-xl lg:text-2xl font-black text-gray-900 tracking-tighter">${prod.TieneOferta && prod.PrecioOferta != null
+                                    ? `<span class="line-through text-gray-400 font-semibold mr-2">${fmt(prod.PrecioDetal)}</span><span class="text-primario">${fmt(prod.PrecioOferta)}</span>`
+                                    : fmt(prod.PrecioDetal)}</span>
                             </div>
                         </div>
                         <p class="text-[10px] lg:text-[11px] text-gray-400 leading-tight line-clamp-2 mb-3">${prod.Descripcion || 'Sin descripción disponible.'}</p>
@@ -325,9 +398,25 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
                             <div class="flex flex-col items-start">
                                 <span class="text-[7px] font-black uppercase tracking-[1px] text-gray-300 mb-1">Opciones:</span>
                                 <div class="flex flex-wrap gap-1">
-                                    ${variaciones.map(v => `
-                                        <button onclick="selectVariant(${v.Id}, ${v.StockActual}, '${v.Atributo}: ${v.Valor}', this)" class="px-2.5 py-1 border border-gray-100 rounded-md text-[8px] font-black uppercase transition-all ${v.StockActual <= 0 ? 'opacity-30 cursor-not-allowed line-through' : 'hover:border-gray-900'}">${v.Valor}</button>
-                                    `).join('')}
+                                    ${variaciones.map(v => {
+                                        const precioBaseVar = (prod.PrecioDetal || 0) + (v.PrecioAdicional ?? 0);
+                                        const precioOfertaVar = v.TieneOferta && v.PrecioOferta != null ? v.PrecioOferta : precioBaseVar;
+                                        return `
+                                        <button
+                                            onclick="selectVariant(${v.Id}, ${v.StockActual}, '${(v.Atributo || '').replace(/'/g, "\\'")}: ${(v.Valor || '').replace(/'/g, "\\'")}', this)"
+                                            class="px-2.5 py-1 border border-gray-100 rounded-md text-[8px] font-black uppercase transition-all ${v.StockActual <= 0 ? 'opacity-30 cursor-not-allowed line-through' : 'hover:border-gray-900'}"
+                                            data-precio-adicional="${v.PrecioAdicional ?? 0}"
+                                            data-precio-oferta="${precioOfertaVar}"
+                                            data-precio-base="${precioBaseVar}"
+                                            data-tiene-oferta="${v.TieneOferta ? '1' : '0'}"
+                                        >
+                                            ${v.Valor}
+                                            ${v.PrecioAdicional && v.PrecioAdicional !== 0
+                                                ? `<span class="ml-1 text-[8px] font-normal opacity-70">(+${fmt(v.PrecioAdicional)})</span>`
+                                                : ''
+                                            }
+                                        </button>
+                                    `}).join('')}
                                 </div>
                             </div>
                         ` : ''}
@@ -370,6 +459,27 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
         btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('bg-gray-900', 'text-white', 'border-gray-900'));
         btn.classList.add('bg-gray-900', 'text-white', 'border-gray-900');
         selectedVarianteId = id; currentStock = stock; (window as any).varianteLabel = label;
+
+        const adicionalAttr = (btn as HTMLButtonElement).getAttribute('data-precio-adicional');
+        selectedVariantePrecioAdicional = adicionalAttr ? Number(adicionalAttr) : 0;
+        if (isNaN(selectedVariantePrecioAdicional)) selectedVariantePrecioAdicional = 0;
+
+        const precioOfertaAttr = (btn as HTMLButtonElement).getAttribute('data-precio-oferta');
+        const precioBaseAttr = (btn as HTMLButtonElement).getAttribute('data-precio-base');
+        const tieneOfertaAttr = (btn as HTMLButtonElement).getAttribute('data-tiene-oferta');
+        const precioMostrar = precioOfertaAttr ? Number(precioOfertaAttr) : (precioBaseAttr ? Number(precioBaseAttr) : 0);
+        const precioBase = precioBaseAttr ? Number(precioBaseAttr) : 0;
+        const tieneOferta = tieneOfertaAttr === '1';
+
+        const priceEl = document.getElementById('modal-price') as HTMLElement | null;
+        if (priceEl) {
+            if (tieneOferta && precioBase > 0) {
+                priceEl.innerHTML = `<span class="line-through text-gray-400 font-semibold mr-2">${fmt(precioBase)}</span><span class="text-primario">${fmt(precioMostrar)}</span>`;
+            } else {
+                priceEl.textContent = fmt(precioMostrar);
+            }
+        }
+
         const stockDisplay = document.getElementById('stock-display');
         stockDisplay.textContent = `Stock disponible: ${stock} unidades`;
         stockDisplay.className = `text-[10px] font-bold uppercase tracking-widest ${stock > 0 ? 'text-green-500' : 'text-red-500'}`;
@@ -381,10 +491,54 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
 
     (window as any).updateModalQty = (d) => { const i = document.getElementById('modal-qty') as HTMLInputElement; const nextVal = parseInt(i.value) + d; if (nextVal >= 1 && nextVal <= currentStock) { i.value = nextVal.toString(); } };
 
-    (window as any).addToCart = () => {
-        if (selectedProduct.Variaciones?.length > 0 && !selectedVarianteId) { alert('Selecciona una opción'); return; }
+    (window as any).addToCart = async () => {
+        const variaciones = selectedProduct.Variaciones || [];
+        const hasVariantes = variaciones.length > 0;
+        const algunaVarianteConStock = variaciones.some((v: any) => (v.StockActual ?? 0) > 0);
+
+        if (hasVariantes && !selectedVarianteId) {
+            if (algunaVarianteConStock) {
+                alert('Selecciona una opción');
+                return;
+            }
+            if (selectedProduct.StockActual <= 0) {
+                alert('Producto agotado');
+                return;
+            }
+            currentStock = selectedProduct.StockActual;
+        }
+
         const qty = parseInt((document.getElementById('modal-qty') as HTMLInputElement).value);
-        const item = { id: selectedProduct.Id, nombre: selectedProduct.Nombre, precio: selectedProduct.PrecioDetal, imagen: selectedProduct.Imagenes?.[0]?.Url || '', varianteId: selectedVarianteId, varianteLabel: (window as any).varianteLabel || '', stockMax: currentStock, cantidad: qty };
+
+        const basePrice = Number(selectedProduct.PrecioDetal) || 0;
+        let baseWithVariante = basePrice;
+        if (selectedVarianteId && selectedProduct.Variaciones?.length) {
+            const varianteMatch = selectedProduct.Variaciones.find((v: any) => v.Id === selectedVarianteId);
+            const adicional = varianteMatch?.PrecioAdicional ?? selectedVariantePrecioAdicional ?? 0;
+            baseWithVariante = basePrice + (Number(adicional) || 0);
+        }
+
+        const promoItems = await applyPromotionsForItems([
+            {
+                productoId: selectedProduct.Id,
+                varianteId: selectedVarianteId ?? null,
+                cantidad: qty,
+                precioBase: baseWithVariante,
+            },
+        ]);
+
+        const unitPrice = promoItems[0]?.precioFinal ?? baseWithVariante;
+
+        const item = {
+            id: selectedProduct.Id,
+            nombre: selectedProduct.Nombre,
+            precio: unitPrice,
+            imagen: selectedProduct.Imagenes?.[0]?.Url || '',
+            varianteId: selectedVarianteId || null,
+            varianteLabel: (window as any).varianteLabel || '',
+            stockMax: currentStock,
+            cantidad: qty
+        };
         const idx = cart.findIndex(i => i.id === item.id && i.varianteId === item.varianteId);
         if (idx > -1) cart[idx].cantidad = Math.min(cart[idx].cantidad + qty, currentStock);
         else cart.push(item);
