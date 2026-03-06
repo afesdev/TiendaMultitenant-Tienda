@@ -9,8 +9,8 @@ const { tiendaNombre, categorias } = Astro.props;
 
 <header class="site-header sticky top-0 z-[100] bg-white">
 	<div class="header-gradient w-full"></div>
-	<nav class="bg-white border-b border-gray-100">
-		<div class="container-fluid px-4 lg:px-12">
+	<nav class="bg-white border-b border-gray-100 w-full">
+		<div class="w-full px-4 lg:px-12">
 			<div class="flex items-center justify-between min-h-[60px] lg:min-h-[80px]">
 				
 				<div class="flex-1 flex items-center">
@@ -57,7 +57,7 @@ const { tiendaNombre, categorias } = Astro.props;
 
 					<button class="relative p-2 group" id="btnOpenCart">
 						<i class="bi bi-bag text-xl lg:text-2xl text-gray-900 group-hover:text-primario transition-colors"></i>
-						<span class="cart-badge-count hidden absolute top-0 right-0 bg-primario text-white text-[9px] font-black rounded-full w-4 h-4 flex items-center justify-center border-2 border-white">0</span>
+						<span class="cart-badge-count hidden absolute top-0 right-0 lg:top-0.5 lg:right-0.5 bg-gray-900 text-white text-[9px] lg:text-[10px] font-black rounded-full min-w-[16px] h-[16px] lg:min-w-[19px] lg:h-[19px] flex items-center justify-center border-2 border-white leading-none px-0.5 shadow-sm transition-all scale-90 lg:scale-100">0</span>
 					</button>
 				</div>
 			</div>
@@ -95,7 +95,7 @@ const { tiendaNombre, categorias } = Astro.props;
         <button class="tab-item" onclick="document.getElementById('btnOpenCart').click()">
             <div class="relative">
                 <i class="bi bi-bag text-xl"></i>
-                <span class="cart-badge-count hidden absolute -top-1.5 -right-1.5 bg-primario text-white text-[8px] font-black rounded-full w-4 h-4 flex items-center justify-center border-2 border-white">0</span>
+                <span class="cart-badge-count hidden absolute -top-1.5 -right-1.5 bg-gray-900 text-white text-[8px] font-black rounded-full min-w-[15px] h-[15px] flex items-center justify-center border-2 border-white leading-none px-0.5 shadow-sm">0</span>
             </div>
             <span>Bolsa</span>
         </button>

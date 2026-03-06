@@ -59,7 +59,8 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
                 <p class="text-xs font-black uppercase tracking-[3px]">No hay productos en esta categoría</p>
             </div>
         ) : (
-            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-px lg:gap-4 bg-gray-100 lg:bg-transparent">
+        <div class="px-px lg:px-6 w-full">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-px lg:gap-6 bg-gray-100 lg:bg-transparent">
                 {productos.map((prod) => (
                     <ProductCard 
                         id={prod.Id}
@@ -73,40 +74,127 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
                     />
                 ))}
             </div>
+        </div>
         )}
 	</main>
 
 	<Footer />
 
-    <!-- REUTILIZAMOS LOS MODALES (IGUAL QUE EN INDEX) -->
-    <div id="productModalOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-md z-[300] hidden flex items-center justify-center p-4 lg:p-10 transition-opacity duration-300 opacity-0">
-        <div id="productModal" class="bg-white w-full max-w-6xl max-h-[95vh] lg:max-h-[90vh] rounded-[2.5rem] overflow-hidden shadow-2xl relative translate-y-10 transition-transform duration-300 opacity-0">
-            <button id="btnCloseModal" class="absolute top-6 right-6 lg:top-10 lg:right-10 z-10 w-12 h-12 bg-white/80 backdrop-blur rounded-full flex items-center justify-center shadow-lg transition-all"><i class="bi bi-x-lg"></i></button>
-            <div id="modalContent" class="h-full overflow-y-auto"></div>
+    <!-- MODAL DE PRODUCTO (VISTA COMPLETA) -->
+    <div id="productModalOverlay" class="fixed inset-0 bg-white z-[300] hidden transition-opacity duration-300 opacity-0 overflow-y-auto">
+        <div id="productModal" class="w-full min-h-full bg-white relative translate-y-10 transition-transform duration-500 ease-out">
+            <button id="btnCloseModal" class="fixed top-6 right-6 z-[310] w-12 h-12 bg-gray-100/80 backdrop-blur-md hover:bg-gray-200 rounded-full flex items-center justify-center shadow-sm transition-all">
+                <i class="bi bi-x-lg text-lg"></i>
+            </button>
+            <div id="modalContent" class="w-full">
+                <!-- Inyectado por JS -->
+            </div>
         </div>
     </div>
 
+    <!-- CARRITO LATERAL -->
     <div id="cartOverlay" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[400] hidden transition-opacity duration-300 opacity-0"></div>
-    <div id="cartOffcanvas" class="fixed top-0 right-0 h-full w-full max-w-[450px] bg-white z-[401] translate-x-full transition-transform duration-300 shadow-2xl flex flex-col">
-        <div class="px-8 py-8 border-b border-gray-50 flex items-center justify-between">
+    <div id="cartOffcanvas" class="fixed top-0 right-0 h-full w-full max-w-[450px] bg-white z-[401] translate-x-full transition-transform duration-300 ease-in-out shadow-2xl flex flex-col">
+        <div class="px-8 py-8 border-b border-gray-50 flex items-center justify-between bg-white">
             <h5 class="font-black text-xs uppercase tracking-[4px]">Mi Bolsa</h5>
-            <button id="btnCloseCart" class="p-2 text-gray-400"><i class="bi bi-x-lg"></i></button>
+            <button id="btnCloseCart" class="p-2 text-gray-400 hover:text-gray-900 transition-colors">
+                <i class="bi bi-x-lg text-lg"></i>
+            </button>
         </div>
-        <div id="cartItems" class="flex-grow overflow-y-auto px-6 py-6 bg-gray-50/30"></div>
+        <div id="cartItems" class="flex-grow overflow-y-auto px-6 py-6 bg-gray-50/30">
+            <!-- Items -->
+        </div>
         <div id="cartFooter" class="p-8 bg-white border-t border-gray-100 hidden">
             <div class="flex justify-between items-center mb-8">
-                <span class="text-[10px] font-black uppercase tracking-[3px] text-gray-400">Total Bolsa</span>
-                <span id="cartTotal" class="text-2xl font-black text-gray-900">$0</span>
+                <div class="flex flex-col">
+                    <span class="text-[10px] font-black uppercase tracking-[3px] text-gray-400">Total Bolsa</span>
+                    <span id="cart-item-count" class="text-[9px] font-bold text-primario uppercase">0 productos</span>
+                </div>
+                <span id="cartTotal" class="text-2xl font-black text-gray-900 tracking-tighter">$0</span>
             </div>
-            <button class="w-full bg-gray-900 text-white text-[11px] font-black uppercase tracking-[4px] py-6 rounded-[2rem] shadow-xl">Finalizar Pedido</button>
+            <button id="btnCheckout" class="w-full bg-gray-900 hover:bg-black text-white text-[11px] font-black uppercase tracking-[4px] py-6 rounded-[2rem] shadow-xl transition-all">
+                Finalizar Pedido
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL DE CHECKOUT -->
+    <div id="checkoutModalOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-md z-[500] hidden flex items-center justify-center p-4 transition-opacity duration-300 opacity-0">
+        <div id="checkoutModal" class="bg-white w-full max-w-xl rounded-[2.5rem] overflow-hidden shadow-2xl relative translate-y-10 transition-transform duration-300">
+            <div class="p-8 lg:p-12">
+                <div class="flex justify-between items-center mb-8">
+                    <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tighter">Datos de Envío</h2>
+                    <button id="btnCloseCheckout" class="text-gray-400 hover:text-gray-900"><i class="bi bi-x-lg text-xl"></i></button>
+                </div>
+                
+                <form id="checkoutForm" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Cédula</label>
+                            <input type="text" name="cedula" required class="bg-gray-50 border-0 rounded-2xl py-4 px-6 text-xs font-bold focus:ring-2 focus:ring-primario/20 outline-none" placeholder="123456789" />
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">WhatsApp</label>
+                            <input type="tel" name="celular" required class="bg-gray-50 border-0 rounded-2xl py-4 px-6 text-xs font-bold focus:ring-2 focus:ring-primario/20 outline-none" placeholder="300 123 4567" />
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Nombre Completo</label>
+                        <input type="text" name="nombre" required class="bg-gray-50 border-0 rounded-2xl py-4 px-6 text-xs font-bold focus:ring-2 focus:ring-primario/20 outline-none" placeholder="Ej: Juan Pérez" />
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Ciudad</label>
+                            <input type="text" name="ciudad" required class="bg-gray-50 border-0 rounded-2xl py-4 px-6 text-xs font-bold focus:ring-2 focus:ring-primario/20 outline-none" placeholder="Ej: Medellín" />
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Método de Pago</label>
+                            <select name="metodoPago" required class="bg-gray-50 border-0 rounded-2xl py-4 px-6 text-xs font-bold focus:ring-2 focus:ring-primario/20 outline-none appearance-none cursor-pointer">
+                                <option value="Efectivo">Efectivo (Contra entrega)</option>
+                                <option value="Transferencia">Transferencia Bancaria</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Dirección Completa</label>
+                        <input type="text" name="direccion" required class="bg-gray-50 border-0 rounded-2xl py-4 px-6 text-xs font-bold focus:ring-2 focus:ring-primario/20 outline-none" placeholder="Calle 123 #45-67 Barrio ..." />
+                    </div>
+
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-2">Observación (Opcional)</label>
+                        <textarea name="observacion" class="bg-gray-50 border-0 rounded-2xl py-4 px-6 text-xs font-bold focus:ring-2 focus:ring-primario/20 outline-none resize-none" rows="2" placeholder="Ej: Portería, dejar con el vecino..."></textarea>
+                    </div>
+
+                    <button type="submit" id="btnSubmitOrder" class="w-full bg-gray-900 hover:bg-black text-white text-[11px] font-black uppercase tracking-[4px] py-6 rounded-[2rem] shadow-xl transition-all mt-4 flex items-center justify-center gap-3">
+                        <span>Confirmar Mi Pedido</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ÉXITO -->
+    <div id="successModalOverlay" class="fixed inset-0 bg-white z-[600] hidden flex items-center justify-center p-4">
+        <div class="text-center max-w-md mx-auto">
+            <div class="w-24 h-24 bg-green-50 text-green-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+                <i class="bi bi-check-lg text-5xl"></i>
+            </div>
+            <h2 class="text-4xl font-black text-gray-900 uppercase tracking-tighter mb-4">¡Pedido Recibido!</h2>
+            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-loose mb-10">Gracias por tu compra. Nos pondremos en contacto contigo vía WhatsApp para coordinar la entrega.</p>
+            <button onclick="location.reload()" class="bg-gray-900 text-white text-[10px] font-black uppercase tracking-[3px] px-12 py-5 rounded-2xl hover:bg-black transition-all shadow-xl">
+                Volver a la Tienda
+            </button>
         </div>
     </div>
 </Layout>
 
 <script>
-    // IMPORTANTE: Mantenemos la misma lógica de interactividad que en index.astro
     import { SITE_CONFIG } from '../../config';
-    const { API_BASE } = SITE_CONFIG;
+    const { API_BASE, TIENDA_SLUG } = SITE_CONFIG;
 
     let cart = JSON.parse(localStorage.getItem('cart') || '[]');
     let selectedProduct = null;
@@ -121,6 +209,15 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
     const cartItemsContainer = document.getElementById('cartItems');
     const cartFooter = document.getElementById('cartFooter');
     const cartTotal = document.getElementById('cartTotal');
+    const cartItemCount = document.getElementById('cart-item-count');
+    const btnCloseCart = document.getElementById('btnCloseCart');
+
+    const btnCheckout = document.getElementById('btnCheckout');
+    const checkoutModalOverlay = document.getElementById('checkoutModalOverlay');
+    const checkoutModal = document.getElementById('checkoutModal');
+    const btnCloseCheckout = document.getElementById('btnCloseCheckout');
+    const checkoutForm = document.getElementById('checkoutForm') as HTMLFormElement;
+    const successModalOverlay = document.getElementById('successModalOverlay');
 
     const toggleModal = (show) => {
         if (show) { modalOverlay.classList.remove('hidden'); setTimeout(() => { modalOverlay.classList.add('opacity-100'); modal.classList.add('translate-y-0', 'opacity-100'); }, 10); document.body.style.overflow = 'hidden'; }
@@ -130,6 +227,24 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
     const toggleCart = (show) => {
         if (show) { cartOverlay.classList.remove('hidden'); setTimeout(() => { cartOverlay.classList.add('opacity-100'); cartOffcanvas.classList.remove('translate-x-full'); }, 10); document.body.style.overflow = 'hidden'; }
         else { cartOverlay.classList.remove('opacity-100'); cartOffcanvas.classList.add('translate-x-full'); setTimeout(() => { cartOverlay.classList.add('hidden'); document.body.style.overflow = ''; }, 300); }
+    };
+
+    const toggleCheckout = (show) => {
+        if (show) {
+            checkoutModalOverlay.classList.remove('hidden');
+            setTimeout(() => {
+                checkoutModalOverlay.classList.add('opacity-100');
+                checkoutModal.classList.add('translate-y-0');
+            }, 10);
+            document.body.style.overflow = 'hidden';
+        } else {
+            checkoutModalOverlay.classList.remove('opacity-100');
+            checkoutModal.classList.remove('translate-y-0');
+            setTimeout(() => {
+                checkoutModalOverlay.classList.add('hidden');
+                document.body.style.overflow = '';
+            }, 300);
+        }
     };
 
     function updateCartUI() {
@@ -144,7 +259,9 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
                 const isMax = item.cantidad >= item.stockMax;
                 return `<div class="flex gap-5 bg-white p-5 rounded-3xl mb-4 shadow-sm border border-gray-50 group"><img src="${item.imagen}" class="w-20 h-28 object-cover rounded-2xl bg-gray-100" /><div class="flex-grow py-1 flex flex-col"><div class="flex justify-between"><h4 class="text-[10px] font-black uppercase tracking-wider text-gray-900">${item.nombre}</h4><button onclick="removeFromCart(${i})" class="text-gray-300 hover:text-red-500 transition-colors"><i class="bi bi-trash3"></i></button></div><p class="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-widest">${item.varianteLabel || ''}</p><div class="mt-auto flex justify-between items-center"><div class="flex flex-col gap-1"><div class="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-100"><button onclick="updateQty(${i}, -1)" class="w-7 h-7 flex items-center justify-center font-bold hover:text-primario transition-colors">-</button><span class="w-8 text-center text-[10px] font-black">${item.cantidad}</span><button onclick="updateQty(${i}, 1)" class="w-7 h-7 flex items-center justify-center font-bold transition-colors ${isMax ? 'text-gray-200 cursor-not-allowed' : 'hover:text-primario'}" ${isMax ? 'disabled' : ''}>+</button></div>${isMax ? `<span class="text-[7px] text-red-400 font-bold uppercase tracking-tighter">Límite de stock</span>` : ''}</div><span class="text-xs font-black text-gray-900">${new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(item.precio * item.cantidad)}</span></div></div></div>`;
             }).join('');
-            cartTotal.textContent = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(total); cartFooter.classList.remove('hidden');
+            cartTotal.textContent = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(total);
+            cartItemCount.textContent = `${totalItemsCount} ${totalItemsCount === 1 ? 'producto' : 'productos'}`;
+            cartFooter.classList.remove('hidden');
         }
     }
 
@@ -155,7 +272,7 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
         modalContent.innerHTML = `<div class="flex items-center justify-center p-32"><div class="loading-spinner"></div></div>`;
         toggleModal(true);
         try {
-            const res = await fetch(`${API_BASE}/productos/${id}`);
+            const res = await fetch(`${API_BASE}/public/productos/${id}`);
             const prod = await res.json();
             selectedProduct = prod; selectedVarianteId = null; currentStock = prod.StockActual;
             renderModal(prod);
@@ -166,8 +283,88 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
         const fmt = (p) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(p);
         const variaciones = prod.Variaciones || [];
         const hasVars = variaciones.length > 0;
-        modalContent.innerHTML = `<div class="flex flex-col lg:grid lg:grid-cols-2 lg:min-h-[70vh]"><div class="bg-gray-100 flex items-center justify-center p-4"><img src="${prod.Imagenes?.[0]?.Url}" class="w-full h-auto max-h-[85vh] object-contain rounded-3xl shadow-sm" /></div><div class="p-8 lg:p-16 flex flex-col bg-white"><span class="text-[10px] font-black text-primario uppercase tracking-[3px] mb-4">${prod.CategoriaNombre || 'Colección'}</span><h2 class="text-3xl lg:text-4xl font-black text-gray-900 mb-6 uppercase tracking-tight">${prod.Nombre}</h2><p class="text-sm text-gray-500 leading-relaxed mb-10 max-w-md">${prod.Descripcion || 'Sin descripción disponible.'}</p><div class="mb-12"><span class="text-4xl font-black text-gray-900 tracking-tighter">${fmt(prod.PrecioDetal)}</span></div><div class="space-y-10 mb-12">${hasVars ? `<div><span class="text-[10px] font-black uppercase tracking-[2px] text-gray-400 block mb-4">Selecciona una opción</span><div class="flex flex-wrap gap-2">${variaciones.map(v => `<button onclick="selectVariant(${v.Id}, ${v.StockActual}, '${v.Atributo}: ${v.Valor}', this)" class="px-6 py-3 border-2 border-gray-100 rounded-2xl text-xs font-black uppercase transition-all ${v.StockActual <= 0 ? 'opacity-40 cursor-not-allowed line-through' : 'hover:border-gray-900'}" ${v.StockActual <= 0 ? 'disabled' : ''}>${v.Valor}</button>`).join('')}</div></div>` : ''}<div id="stock-display" class="text-[10px] font-bold uppercase tracking-widest ${prod.StockActual > 0 ? 'text-green-500' : 'text-red-500'}">Stock disponible: ${prod.StockActual} unidades</div></div><div class="mt-auto flex flex-col sm:flex-row gap-4"><div class="flex items-center bg-gray-100 rounded-[1.5rem] p-1 justify-between sm:justify-start"><button onclick="updateModalQty(-1)" class="w-12 h-12 font-bold text-lg">-</button><input type="number" id="modal-qty" value="1" class="w-12 bg-transparent text-center font-black text-sm outline-none" readonly /><button onclick="updateModalQty(1)" class="w-12 h-12 font-bold text-lg">+</button></div><button id="btn-add-main" onclick="addToCart()" class="flex-grow bg-gray-900 hover:bg-black text-white text-[11px] font-black uppercase tracking-[4px] py-5 rounded-[1.5rem] shadow-2xl transition-all flex items-center justify-center gap-4 ${prod.StockActual <= 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${prod.StockActual <= 0 ? 'disabled' : ''}>${prod.StockActual > 0 ? 'Agregar a la bolsa' : 'Agotado'}</button></div></div></div>`;
+        const imagenes = prod.Imagenes || [];
+        const mainUrl = imagenes[0]?.Url || 'https://via.placeholder.com/600x900?text=Sin+Imagen';
+
+        const thumbnailsHtml = imagenes.length > 1
+            ? `<div class="absolute bottom-4 left-0 right-0 flex gap-2 overflow-x-auto px-4 justify-center">
+                ${imagenes.map((img, i) => `
+                    <img
+                        src="${img.Url}"
+                        onclick="selectModalImage(this, '${img.Url}')"
+                        class="w-12 h-16 shrink-0 object-cover rounded-lg cursor-pointer border-2 transition-all ${i === 0 ? 'border-white shadow-lg' : 'border-transparent opacity-70 hover:opacity-100'}"
+                    />
+                `).join('')}
+               </div>`
+            : '';
+
+        modalContent.innerHTML = `
+            <div class="flex flex-col w-full h-screen overflow-hidden bg-white">
+                <div class="relative w-full h-[55vh] bg-gray-100">
+                    <img id="modal-main-img" src="${mainUrl}" class="w-full h-full object-cover transition-opacity duration-200" />
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
+                    ${thumbnailsHtml}
+                </div>
+
+                <div class="flex-grow flex flex-col p-5 lg:p-8 justify-start gap-3 max-w-4xl mx-auto w-full overflow-hidden text-left">
+                    <div class="flex flex-col w-full">
+                        <div class="flex justify-between items-start gap-4 w-full mb-1">
+                            <div>
+                                <span class="text-[8px] font-black text-primario uppercase tracking-[2px]">${prod.CategoriaNombre || 'Colección'}</span>
+                                <h2 class="text-lg lg:text-xl font-black text-gray-900 uppercase tracking-tighter leading-tight line-clamp-1">${prod.Nombre}</h2>
+                            </div>
+                            <div class="text-right shrink-0">
+                                <span class="text-xl lg:text-2xl font-black text-gray-900 tracking-tighter">${fmt(prod.PrecioDetal)}</span>
+                            </div>
+                        </div>
+                        <p class="text-[10px] lg:text-[11px] text-gray-400 leading-tight line-clamp-2 mb-3">${prod.Descripcion || 'Sin descripción disponible.'}</p>
+                    </div>
+
+                    <div class="w-full space-y-4">
+                        ${hasVars ? `
+                            <div class="flex flex-col items-start">
+                                <span class="text-[7px] font-black uppercase tracking-[1px] text-gray-300 mb-1">Opciones:</span>
+                                <div class="flex flex-wrap gap-1">
+                                    ${variaciones.map(v => `
+                                        <button onclick="selectVariant(${v.Id}, ${v.StockActual}, '${v.Atributo}: ${v.Valor}', this)" class="px-2.5 py-1 border border-gray-100 rounded-md text-[8px] font-black uppercase transition-all ${v.StockActual <= 0 ? 'opacity-30 cursor-not-allowed line-through' : 'hover:border-gray-900'}">${v.Valor}</button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : ''}
+                        
+                        <div class="flex items-center justify-between border-t border-gray-50 pt-3">
+                            <div id="stock-display" class="text-[8px] font-bold uppercase tracking-widest ${prod.StockActual > 0 ? 'text-green-500' : 'text-red-400'}">
+                                Stock: ${prod.StockActual} un.
+                            </div>
+                            <div class="flex items-center bg-gray-50 rounded-lg p-0.5">
+                                <button onclick="updateModalQty(-1)" class="w-7 h-7 font-black text-xs">-</button>
+                                <input type="number" id="modal-qty" value="1" class="w-7 bg-transparent text-center font-black text-[10px] outline-none" readonly />
+                                <button onclick="updateModalQty(1)" class="w-7 h-7 font-black text-xs">+</button>
+                            </div>
+                        </div>
+
+                        <button id="btn-add-main" onclick="addToCart()" class="w-full bg-gray-900 hover:bg-black text-white text-[9px] font-black uppercase tracking-[3px] py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 ${prod.StockActual <= 0 ? 'opacity-50 cursor-not-allowed' : ''}" ${prod.StockActual <= 0 ? 'disabled' : ''}>
+                            ${prod.StockActual > 0 ? 'Añadir a mi bolsa' : 'Agotado'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
     }
+
+    (window as any).selectModalImage = (thumb, url) => {
+        const mainImg = document.getElementById('modal-main-img') as HTMLImageElement;
+        if (mainImg) {
+            mainImg.style.opacity = '0';
+            setTimeout(() => { mainImg.src = url; mainImg.style.opacity = '1'; }, 150);
+        }
+        thumb.parentElement.querySelectorAll('img').forEach(img => {
+            img.classList.remove('border-gray-900');
+            img.classList.add('border-transparent');
+        });
+        thumb.classList.remove('border-transparent');
+        thumb.classList.add('border-gray-900');
+    };
 
     (window as any).selectVariant = (id, stock, label, btn) => {
         btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('bg-gray-900', 'text-white', 'border-gray-900'));
@@ -193,6 +390,29 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
         else cart.push(item);
         updateCartUI(); toggleModal(false); toggleCart(true);
     };
+
+    btnCheckout?.addEventListener('click', () => { toggleCart(false); toggleCheckout(true); });
+    btnCloseCheckout?.addEventListener('click', () => toggleCheckout(false));
+
+    checkoutForm?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btnSubmit = document.getElementById('btnSubmitOrder') as HTMLButtonElement;
+        const formData = new FormData(checkoutForm);
+        const data = {
+            tiendaSlug: TIENDA_SLUG,
+            cliente: { cedula: formData.get('cedula'), nombre: formData.get('nombre'), celular: formData.get('celular'), ciudad: formData.get('ciudad'), direccion: formData.get('direccion') },
+            carrito: cart.map(item => ({ productoId: item.id, varianteId: item.varianteId, cantidad: item.cantidad, precioUnitario: item.precio })),
+            metodoPago: formData.get('metodoPago'),
+            observacionGeneral: formData.get('observacion')
+        };
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = '<div class="loading-spinner border-white border-t-transparent w-5 h-5"></div>';
+        try {
+            const res = await fetch(`${API_BASE}/pedidos`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+            if (res.ok) { cart = []; localStorage.removeItem('cart'); updateCartUI(); toggleCheckout(false); successModalOverlay.classList.remove('hidden'); }
+            else { const err = await res.json(); alert(err.message || 'Error al procesar el pedido'); btnSubmit.disabled = false; btnSubmit.innerHTML = '<span>Confirmar Mi Pedido</span><i class="bi bi-arrow-right"></i>'; }
+        } catch (error) { alert('Error de conexión'); btnSubmit.disabled = false; btnSubmit.innerHTML = '<span>Confirmar Mi Pedido</span><i class="bi bi-arrow-right"></i>'; }
+    });
 
     document.addEventListener('click', (e) => { const card = (e.target as HTMLElement).closest('.product-card'); if (card) openProductModal(card.getAttribute('data-id')); });
     document.querySelectorAll('#btnOpenCart, .btnOpenCart').forEach(b => b.addEventListener('click', () => toggleCart(true)));
