@@ -66,6 +66,8 @@ try {
                         descripcion={prod.Descripcion}
                         tallas={prod.Tallas}
                         colores={prod.Colores}
+                        coloresHex={prod.ColoresHex}
+                        imagenesLista={prod.ImagenesLista}
                         precioOriginal={prod.TieneOferta ? prod.PrecioDetal : undefined}
                         tieneOferta={prod.TieneOferta}
                     />
@@ -100,7 +102,7 @@ try {
                             <h2 id="panelNombre" class="text-xl font-black text-gray-900 uppercase tracking-tighter leading-tight flex-1"></h2>
                             <span id="panelPrecio" class="text-xl font-black text-gray-900 tracking-tighter shrink-0"></span>
                         </div>
-                        <p id="panelDescripcion" class="hidden text-xs text-gray-400 leading-relaxed"></p>
+                        <p id="panelDescripcion" class="hidden text-[11px] text-gray-400 leading-relaxed"></p>
                         <div id="panelVariantes" class="hidden flex-col gap-2">
                             <span class="text-[9px] font-black uppercase tracking-[2px] text-gray-400">Selecciona una opción</span>
                             <div id="panelVariantesBtns" class="flex flex-wrap gap-2"></div>
@@ -424,19 +426,26 @@ try {
         }
     }
 
-    function populatePanel(prod: any) {
-        const imagenes = prod.Imagenes || [];
-        const mainUrl = imagenes[0]?.Url || 'https://via.placeholder.com/600x900?text=Sin+Imagen';
-        const variaciones = prod.Variaciones || [];
-
+    function renderPanelImages(imagenes: any[]) {
         const mainImg = document.getElementById('panelMainImg') as HTMLImageElement;
-        mainImg.src = mainUrl;
-        mainImg.alt = prod.Nombre;
-
         const thumbsEl = document.getElementById('panelThumbs');
-        if (imagenes.length > 1) {
-            thumbsEl!.innerHTML = imagenes.map((img: any, i: number) => `
-                <img src="${img.Url}" onclick="selectPanelImage(this,'${img.Url}')" class="w-14 h-20 shrink-0 object-cover rounded-xl cursor-pointer border-2 transition-all ${i === 0 ? 'border-gray-900 opacity-100' : 'border-transparent opacity-40 hover:opacity-70'}" />
+        const imgs = imagenes || [];
+        const mainUrl = imgs[0]?.Url || 'https://via.placeholder.com/600x900?text=Sin+Imagen';
+
+        mainImg.src = mainUrl;
+        mainImg.alt = selectedProduct?.Nombre || '';
+
+        if (imgs.length > 1) {
+            thumbsEl!.innerHTML = imgs.map((img: any, i: number) => `
+                <div class="relative shrink-0">
+                    <img src="${img.Url}" onclick="selectPanelImage(this,'${img.Url}')" class="w-14 h-20 object-cover rounded-xl cursor-pointer border-2 transition-all ${i === 0 ? 'border-gray-900 opacity-100' : 'border-transparent opacity-40 hover:opacity-70'}" />
+                    ${img.EtiquetaAngulo
+                        ? `<span class="absolute bottom-0 inset-x-0 bg-black/60 text-[8px] text-white font-bold uppercase tracking-widest px-1 py-0.5 text-center rounded-b-xl">
+                               ${img.EtiquetaAngulo}
+                           </span>`
+                        : ''
+                    }
+                </div>
             `).join('');
             thumbsEl?.classList.remove('hidden');
             thumbsEl?.classList.add('flex');
@@ -444,6 +453,21 @@ try {
             thumbsEl?.classList.add('hidden');
             thumbsEl?.classList.remove('flex');
         }
+    }
+
+    function populatePanel(prod: any) {
+        const imagenes = prod.Imagenes || [];
+        const variaciones = prod.Variaciones || [];
+
+        (window as any).panelImagenesGlobal = imagenes;
+        (window as any).panelImagenesPorVariante = {};
+        variaciones.forEach((v: any) => {
+            if (v.Imagenes && Array.isArray(v.Imagenes) && v.Imagenes.length > 0) {
+                (window as any).panelImagenesPorVariante[v.Id] = v.Imagenes;
+            }
+        });
+
+        renderPanelImages(imagenes);
 
         (document.getElementById('panelNombre') as HTMLElement).textContent = prod.Nombre;
         const precioEl = document.getElementById('panelPrecio') as HTMLElement;
@@ -467,12 +491,14 @@ try {
         const varsBtns = document.getElementById('panelVariantesBtns');
         if (variaciones.length > 0) {
             varsBtns!.innerHTML = variaciones.map((v: any) => {
+                const isColor = (v.Atributo || '').toLowerCase() === 'color';
                 const precioBaseVar = (prod.PrecioDetal || 0) + (v.PrecioAdicional ?? 0);
                 const precioOfertaVar = v.TieneOferta && v.PrecioOferta != null ? v.PrecioOferta : precioBaseVar;
                 return `
-                <button onclick="selectPanelVariant(${v.Id},${v.StockActual},'${(v.Atributo || '').replace(/'/g, "\\'")}: ${(v.Valor || '').replace(/'/g, "\\'")}',this)" class="px-4 py-2 border border-gray-200 rounded-xl text-[10px] font-black uppercase tracking-wide transition-all ${v.StockActual <= 0 ? 'opacity-30 cursor-not-allowed line-through' : 'hover:border-gray-900 hover:bg-gray-900 hover:text-white'}" data-precio-adicional="${v.PrecioAdicional ?? 0}" data-precio-oferta="${precioOfertaVar}" data-precio-base="${precioBaseVar}" data-tiene-oferta="${v.TieneOferta ? '1' : '0'}">
-                    ${v.Valor}
-                    ${v.PrecioAdicional && v.PrecioAdicional !== 0 ? `<span class="ml-1 text-[9px] font-normal opacity-70">(+${fmt(v.PrecioAdicional)})</span>` : ''}
+                <button onclick="selectPanelVariant(${v.Id},${v.StockActual},'${(v.Atributo || '').replace(/'/g, "\\'")}: ${(v.Valor || '').replace(/'/g, "\\'")}',this)" class="px-5 py-3 border border-gray-200 rounded-2xl text-[11px] md:text-xs font-black uppercase tracking-wide transition-all ${v.StockActual <= 0 ? 'opacity-30 cursor-not-allowed line-through' : 'hover:border-gray-900 hover:bg-gray-900 hover:text-white shadow-md hover:shadow-lg'}" data-precio-adicional="${v.PrecioAdicional ?? 0}" data-precio-oferta="${precioOfertaVar}" data-precio-base="${precioBaseVar}" data-tiene-oferta="${v.TieneOferta ? '1' : '0'}" data-es-color="${isColor ? '1' : '0'}" data-color-hex="${v.ColorHex || ''}">
+                    ${isColor && v.ColorHex ? `<span class="inline-block w-4 h-4 mr-1.5 rounded-full border border-gray-300 align-middle" style="background-color:${v.ColorHex};"></span>` : ''}
+                    <span>${v.Valor}</span>
+                    ${v.PrecioAdicional && v.PrecioAdicional !== 0 ? `<span class="ml-1 text-[10px] font-normal opacity-70">(+${fmt(v.PrecioAdicional)})</span>` : ''}
                 </button>
             `}).join('');
             varsEl?.classList.remove('hidden');
@@ -519,6 +545,10 @@ try {
         selectedVarianteId = id;
         currentStock = stock;
         (window as any).varianteLabel = label;
+
+        const imgsPorVar = (window as any).panelImagenesPorVariante || {};
+        const lista = imgsPorVar[id] && imgsPorVar[id].length ? imgsPorVar[id] : (window as any).panelImagenesGlobal || [];
+        renderPanelImages(lista);
 
         const adicionalAttr = btn.getAttribute('data-precio-adicional');
         selectedVariantePrecioAdicional = adicionalAttr ? Number(adicionalAttr) : 0;

@@ -8,13 +8,17 @@ interface Props {
     descripcion?: string;
     tallas?: string;
     colores?: string;
+    /** Lista de hex de colores (mismo orden que colores) */
+    coloresHex?: string;
+    /** Lista de imágenes concatenadas por coma (primera = principal) */
+    imagenesLista?: string;
 	/** Precio original (tachado) cuando hay oferta */
 	precioOriginal?: number;
 	/** Indica si el producto tiene oferta activa */
 	tieneOferta?: boolean;
 }
 
-const { id, nombre, precio, imagen, categoria, descripcion, tallas, colores, precioOriginal, tieneOferta } = Astro.props;
+const { id, nombre, precio, imagen, categoria, descripcion, tallas, colores, coloresHex, imagenesLista, precioOriginal, tieneOferta } = Astro.props;
 
 const formatPrice = (p: number) => {
     return new Intl.NumberFormat('es-CO', {
@@ -26,6 +30,10 @@ const formatPrice = (p: number) => {
 
 const tallasArray = tallas ? tallas.split(',') : [];
 const coloresArray = colores ? colores.split(',') : [];
+const coloresHexArray = coloresHex ? coloresHex.split(',') : [];
+const imagenesExtraArray = imagenesLista
+    ? imagenesLista.split(',').filter((u, idx) => idx > 0 && u)
+    : [];
 ---
 
 <div class="product-card group relative flex flex-col h-full bg-white transition-all cursor-pointer border border-gray-50 hover:shadow-2xl" data-id={id}>
@@ -40,6 +48,19 @@ const coloresArray = colores ? colores.split(',') : [];
             <span class="absolute top-3 left-3 bg-white/95 backdrop-blur-md text-gray-900 text-[9px] font-bold uppercase tracking-[2px] px-3 py-1.5 rounded shadow-sm">
                 {categoria}
             </span>
+        )}
+
+        {imagenesExtraArray.length > 0 && (
+            <div class="absolute bottom-3 left-3 flex gap-1.5">
+                {imagenesExtraArray.slice(0, 3).map((url) => (
+                    <img
+                        src={url}
+                        alt={`Vista adicional de ${nombre}`}
+                        loading="lazy"
+                        class="w-8 h-8 rounded-xl border border-white/80 shadow-sm object-cover bg-white/60"
+                    />
+                ))}
+            </div>
         )}
         
         <!-- Botón rápido Agregar al Carrito (Aparece en hover) -->
@@ -70,13 +91,23 @@ const coloresArray = colores ? colores.split(',') : [];
             <div class="flex flex-col gap-3 border-t border-gray-100 pt-5">
                 <!-- Colores del producto -->
                 {coloresArray.length > 0 && (
-                    <div class="flex flex-wrap gap-1.5 justify-center items-center">
-                        {coloresArray.map(c => (
-                            <div class="flex flex-col items-center gap-1">
-                                <span class="text-[8px] font-bold text-gray-400 uppercase tracking-tighter line-clamp-1 max-w-[50px]">{c}</span>
-                                <div class="w-3 h-3 rounded-full border border-gray-200 bg-gray-100 shadow-inner"></div>
-                            </div>
-                        ))}
+                    <div class="flex flex-wrap gap-2 justify-center items-center">
+                        {coloresArray.map((c, idx) => {
+                            const hex = coloresHexArray[idx] || '';
+                            const bg = hex && /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(hex) ? hex : '#f3f4f6';
+                            return (
+                                <div class="flex flex-col items-center gap-1">
+                                    <div
+                                        class="w-4 h-4 rounded-full border border-gray-200 shadow-inner"
+                                        style={{ backgroundColor: bg }}
+                                        title={c}
+                                    ></div>
+                                    <span class="text-[8px] font-bold text-gray-400 uppercase tracking-tighter line-clamp-1 max-w-[60px]">
+                                        {c}
+                                    </span>
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
                 

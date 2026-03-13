@@ -71,6 +71,8 @@ const categoriaActual = categorias.find(c => c.Slug === slug);
                         descripcion={prod.Descripcion}
                         tallas={prod.Tallas}
                         colores={prod.Colores}
+                        coloresHex={prod.ColoresHex}
+                        imagenesLista={prod.ImagenesLista}
                         precioOriginal={prod.TieneOferta ? prod.PrecioDetal : undefined}
                         tieneOferta={prod.TieneOferta}
                     />
